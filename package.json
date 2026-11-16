@@ -1,9 +1,18 @@
 {
-  "name": "@local/dsh-duanju-slice",
+  "name": "dsh-duanju-slice",
   "version": "0.1.6",
-  "private": true,
-  "type": "module",
   "description": "短剧切片工作台：按内容方向从剪映工程里定位精彩片段，产出可编辑剪映草稿与成片 MP4。",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "short-drama",
+    "duanju",
+    "jianying",
+    "video-editing"
+  ],
+  "license": "MIT",
+  "type": "module",
   "main": "index.js",
   "files": [
     "index.js",

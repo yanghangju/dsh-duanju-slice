@@ -1,11 +1,11 @@
 window.__ModuleLoader__.load({
-  id: '@local/dsh-duanju-slice',
+  id: 'dsh-duanju-slice',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
     const NS = 'duanju-slice';
     const CONVERSATION = 'duanju.slice.conversation';
-    const CACHE_KEY = '@local/dsh-duanju-slice:lastSessionId:v1';
+    const CACHE_KEY = 'dsh-duanju-slice:lastSessionId:v1';
     const defaults = { scriptPath: '', projectDir: '', exportDir: '', direction: '' };
     const fields = ['scriptPath', 'projectDir', 'exportDir'];
     const dictionaries = {
