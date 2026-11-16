@@ -1,0 +1,137 @@
+{
+    "effect": [
+               {
+               "name": "DazzleLight",
+               "vertexShader": "resource1/shader/DazzleLight.vert",
+               "vUniforms": [],
+               "fragmentShader": "resource1/shader/DazzleLight.frag",
+               "fUniforms": [ 
+                              {
+                                  "name":"progress",
+                                  "type": 3007,
+                                  "timeType": 2,
+                                  "keyframes": [
+                                      {
+                                          "time": 0.0,
+                                          "value": 0.0,
+                                          "function": "Linear"
+                                      },
+                                      {
+                                          "time": 1.0,
+                                          "value": 1.0, 
+                                          "function": "Linear"
+                                      }                                                                                                                   
+                               ]
+                              },                              
+                             {
+                                "name": "blendMode",
+                                "type": 2,
+                                "data": [21]
+                             },
+                             {
+                                "name": "alphaFactor",
+                                "type": 3,
+                                "data": [1.0]
+                             },     
+                               {
+                                  "name": "clockwise",
+                                  "type": 2,
+                                  "data": [1]
+                               },                                                                                                                 
+                              {
+                                  "name": "baseTexWidth",
+                                  "type": 200
+                              },
+                              {
+                                  "name": "baseTexHeight",
+                                  "type": 201
+                              },
+                               {
+                                  "name": "fullBlendTexSize",
+                                  "type": 4,
+                                  "data": [640.0,360.0]
+                               },                               
+                              {
+                                  "name": "inputImageTexture",
+                                  "type": 103,
+                                  "inputTextureIndex": 0
+                              },
+                              {
+                                  "name": "inputImageTexture2",
+                                  "type": 103,
+                                  "inputTextureIndex": 1
+                              },  
+                              {
+                                  "name":"blendTexture",
+                                  "type":1,
+                                  "data":[
+                                      "resource1/seq16-9/light1.png",
+                                      "resource1/seq16-9/light2.png",
+                                      "resource1/seq16-9/light3.png",
+                                      "resource1/seq16-9/light4.png",
+                                      "resource1/seq16-9/light5.png",
+                                      "resource1/seq16-9/light6.png",
+                                      "resource1/seq16-9/light7.png",
+                                      "resource1/seq16-9/light8.png",
+                                      "resource1/seq16-9/light9.png",
+                                      "resource1/seq16-9/light10.png",
+                                      "resource1/seq16-9/light11.png",
+                                      "resource1/seq16-9/light12.png",
+                                      "resource1/seq16-9/light13.png",
+                                      "resource1/seq16-9/light14.png",
+                                      "resource1/seq16-9/light15.png",
+                                      "resource1/seq16-9/light16.png",
+                                      "resource1/seq16-9/light17.png",
+                                      "resource1/seq16-9/light18.png",
+                                      "resource1/seq16-9/light19.png",
+                                      "resource1/seq16-9/light20.png",
+                                      "resource1/seq16-9/light21.png",
+                                      "resource1/seq16-9/light22.png",
+                                      "resource1/seq16-9/light23.png"
+                                  ],
+                                  "refreshInterval":2,
+                                  "processorName": "processorName01"
+                              }                                                                                                                                                  
+                             ]
+               }                                
+               ],
+   "processors": [
+        {
+            "processorName": "processorName01",
+            "fps": 24.0,
+            "textureType": "image",
+            "textureCount": 23,
+            "textures": [
+                            "resource1/seq16-9/light1.png",
+                            "resource1/seq16-9/light2.png",
+                            "resource1/seq16-9/light3.png",
+                            "resource1/seq16-9/light4.png",
+                            "resource1/seq16-9/light5.png",
+                            "resource1/seq16-9/light6.png",
+                            "resource1/seq16-9/light7.png",
+                            "resource1/seq16-9/light8.png",
+                            "resource1/seq16-9/light9.png",
+                            "resource1/seq16-9/light10.png",
+                            "resource1/seq16-9/light11.png",
+                            "resource1/seq16-9/light12.png",
+                            "resource1/seq16-9/light13.png",
+                            "resource1/seq16-9/light14.png",
+                            "resource1/seq16-9/light15.png",
+                            "resource1/seq16-9/light16.png",
+                            "resource1/seq16-9/light17.png",
+                            "resource1/seq16-9/light18.png",
+                            "resource1/seq16-9/light19.png",
+                            "resource1/seq16-9/light20.png",
+                            "resource1/seq16-9/light21.png",
+                            "resource1/seq16-9/light22.png",
+                            "resource1/seq16-9/light23.png"
+            ]
+        }       
+    ],    
+    "version": 1.0
+}
+
+
+
+
+

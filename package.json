@@ -1,0 +1,45 @@
+{
+  "name": "@local/dsh-duanju-slice",
+  "version": "0.1.6",
+  "private": true,
+  "type": "module",
+  "description": "短剧切片工作台：按内容方向从剪映工程里定位精彩片段，产出可编辑剪映草稿与成片 MP4。",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "scripts",
+    "assets",
+    "cordis.patch.yml",
+    "tests",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-file-upload",
+        "@deepseek-ai/dsh-api-workspace-files"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules --test tests/*.test.mjs",
+    "survey": "node scripts/survey.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./assets/*": "./assets/*",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  }
+}

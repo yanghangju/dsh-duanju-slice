@@ -1,0 +1,7 @@
+# 统一换行，避免 Windows 检出把源码改成 CRLF 产生无意义 diff
+* text=auto eol=lf
+
+# 二进制资源不做文本处理
+*.png binary
+*.ttf binary
+*.mp3 binary

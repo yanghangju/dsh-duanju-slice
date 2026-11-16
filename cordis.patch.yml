@@ -1,0 +1,5 @@
+# dsh-duanju-slice bundle patch
+- insert:
+    - id: duanju-slice
+      name: '@local/dsh-duanju-slice'
+      config: {}
