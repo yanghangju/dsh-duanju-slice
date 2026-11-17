@@ -1,0 +1,89 @@
+import assert from 'node:assert/strict'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { test } from 'node:test'
+import { episodeOfName, findEpisode, listEpisodes, partAt } from '../lib/drama-source.js'
+import { cleanup, ffprobe, hasFfmpeg, makeVideo, tempDir } from './support.mjs'
+
+test('集号识别：ep / 第N集 / 纯数字 / N-副本，认不出就返回 undefined', () => {
+  assert.equal(episodeOfName('ep025   (英文字幕版）.mp4'), 25)
+  assert.equal(episodeOfName('ep001（英文字幕版）.mp4'), 1)
+  assert.equal(episodeOfName('episode_12.mov'), 12)
+  assert.equal(episodeOfName('第7集.mp4'), 7)
+  assert.equal(episodeOfName('07.mp4'), 7)
+  assert.equal(episodeOfName('2-副本.mp4'), 2)
+  assert.equal(episodeOfName('10月13日 (1) (1)'), undefined)
+  assert.equal(episodeOfName('花絮.mp4'), undefined)
+  assert.equal(episodeOfName(''), undefined)
+})
+
+test('扫描短剧目录：单个视频算一集，文件夹里的多个视频按名字拼成这一集', { skip: !hasFfmpeg }, async () => {
+  const root = await tempDir('slice-drama-')
+  try {
+    const drama = join(root, '艾米莉的混乱房车')
+    await mkdir(drama, { recursive: true })
+    await makeVideo(drama, 'ep001（英文字幕版）.mp4', { seconds: 1 })
+    await makeVideo(drama, '第2集.mp4', { seconds: 2 })
+    await makeVideo(drama, '3.mp4', { seconds: 1 })
+    await mkdir(join(drama, 'ep004'), { recursive: true })
+    await makeVideo(join(drama, 'ep004'), 'a.mp4', { seconds: 1 })
+    await makeVideo(join(drama, 'ep004'), 'b.mp4', { seconds: 2 })
+    await writeFile(join(drama, 'notes.txt'), 'not a video')
+    await writeFile(join(drama, 'README.md'), 'x')
+    await makeVideo(drama, '花絮.mp4', { seconds: 1 })
+    // 插件自己产出的切片不能被当成素材
+    await makeVideo(drama, 'ep001_v1_20261116054226_678c90fe.mp4', { seconds: 1 })
+
+    const project = await listEpisodes({ dramaDir: drama, ffprobe })
+    assert.deepEqual(project.episodes.map((episode) => episode.episode), [1, 2, 3, 4])
+    assert.equal(project.dramaName, '艾米莉的混乱房车')
+
+    const first = findEpisode(project, 1)
+    assert.equal(first.from, 'file')
+    assert.equal(first.parts.length, 1)
+    assert.ok(Math.abs(first.duration - 1) < 0.2, `第1集时长 ${first.duration}`)
+
+    const fourth = findEpisode(project, 4)
+    assert.equal(fourth.from, 'folder')
+    assert.deepEqual(fourth.parts.map((part) => part.name), ['a.mp4', 'b.mp4'])
+    assert.ok(Math.abs(fourth.duration - 3) < 0.3, `第4集时长 ${fourth.duration}`)
+    // 时间线：a 在 0–1s，b 接着 1–3s。
+    assert.ok(Math.abs(fourth.videoSegments[0].targetStart) < 0.01)
+    assert.ok(Math.abs(fourth.videoSegments[1].targetStart - fourth.videoSegments[0].targetEnd) < 0.001)
+    assert.deepEqual(fourth.canvas, { width: 160, height: 96 })
+    assert.equal(fourth.hasAudio, false)
+
+    // 抽帧定位：这一集第 1.5 秒落在第二个文件里，偏移 0.5 秒。
+    const at = partAt(fourth, fourth.videoSegments[0].targetEnd + 0.5)
+    assert.equal(at.name, 'b.mp4')
+    assert.ok(Math.abs(at.seek - 0.5) < 0.02, `偏移 ${at.seek}`)
+
+    assert.ok(project.skipped.some((item) => item.name === '花絮.mp4'), '认不出集号的文件要记进 skipped')
+  } finally {
+    await cleanup(root)
+  }
+})
+
+test('同一集出现两份时留时长更长的那份，并记下重复', { skip: !hasFfmpeg }, async () => {
+  const root = await tempDir('slice-drama-dup-')
+  try {
+    const drama = join(root, 'drama')
+    await mkdir(drama, { recursive: true })
+    await makeVideo(drama, 'ep007.mp4', { seconds: 1 })
+    await mkdir(join(drama, 'ep007'))
+    await makeVideo(join(drama, 'ep007'), 'full.mp4', { seconds: 3 })
+
+    const project = await listEpisodes({ dramaDir: drama, ffprobe })
+    assert.equal(project.episodes.length, 1)
+    assert.equal(project.episodes[0].name, 'ep007')
+    assert.equal(project.episodes[0].parts[0].name, 'full.mp4')
+    assert.deepEqual(project.duplicates, [{ episode: 7, kept: 'ep007', ignored: 'ep007.mp4' }])
+  } finally {
+    await cleanup(root)
+  }
+})
+
+test('目录不存在时报错，不返回空结果', async () => {
+  await assert.rejects(listEpisodes({ dramaDir: 'Z:\\no-such-drama', ffprobe }), /短剧目录不存在/)
+  await assert.rejects(listEpisodes({ dramaDir: '', ffprobe }), /短剧目录不存在/)
+})

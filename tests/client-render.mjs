@@ -24,7 +24,7 @@ plugin.apply({
   },
   slots: { inject: (_name, fn) => fn(), register: (spec, component) => { captured.set(spec.name, component) } },
 })
-const settings = { scriptPath: '', projectDir: '', exportDir: '', direction: '' }
+const settings = { scriptPath: '', dramaDir: '', exportDir: '', direction: '' }
 const noop = () => {}
 const model = {
   settings, status: 'saved', saving: false, sending: false, busy: false,
@@ -61,7 +61,7 @@ test('new conversations allow initial configuration before confirmation', () => 
 })
 
 test('ready conversations can confirm and lock configuration', () => {
-  const html = render({ settings: { scriptPath: '/剧本.docx', projectDir: '/工程', exportDir: '/成片', direction: '复仇' } })
+  const html = render({ settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' } })
   const confirm = html.match(/<button\b[^>]*class="wb-primary"[^>]*>[\s\S]*?<\/button>/)?.[0]
   assert.match(confirm, /确认并锁定配置/)
   assert.doesNotMatch(confirm, /disabled=/)
@@ -101,7 +101,7 @@ test('failed and interrupted runs never claim a completed video', () => {
 })
 
 test('a running cut locks inputs and cannot be started twice', () => {
-  const html = render({ settings: { scriptPath: '/剧本.docx', projectDir: '/工程', exportDir: '/成片', direction: '复仇' }, item: { task: { stage: 'render' } } }, true)
+  const html = render({ settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' }, item: { task: { stage: 'render' } } }, true)
   assert.doesNotMatch(html, /class="wb-form"|class="wb-file-choice"/)
   assert.match(html, /正在渲染成片/)
   assert.match(html, /<button[^>]*class="wb-secondary wb-generate"[^>]*disabled=""/)
@@ -120,7 +120,7 @@ test('a finished conversation keeps immutable settings and retained versions', (
 })
 
 test('locked configuration remains read-only when generation is submitted', () => {
-  const html = render({ sending: true, item: { configLocked: true }, settings: { scriptPath: '/剧本.docx', projectDir: '/工程', exportDir: '/成片', direction: '复仇' } })
+  const html = render({ sending: true, item: { configLocked: true }, settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' } })
   assert.ok(html.includes('data-started="true"'))
   assert.ok(html.includes('data-locked="true"'))
   assert.doesNotMatch(html, /class="wb-form"/)
@@ -146,7 +146,7 @@ test('pending approvals remain discoverable without opening chat automatically',
 
 
 test('confirmation can lock a new conversation without producing a video', () => {
-  const html = render({ item: { configLocked: true }, settings: { scriptPath: '/剧本.docx', projectDir: '/工程', exportDir: '/成片', direction: '复仇' } })
+  const html = render({ item: { configLocked: true }, settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' } })
   assert.match(html, /配置已锁定/)
   assert.doesNotMatch(html, /class="wb-form"|class="wb-file-choice"|修改配置/)
   assert.match(html, /生成初版/)

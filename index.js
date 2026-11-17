@@ -1,32 +1,48 @@
 // 短剧切片工作台（dsh-duanju-slice）
-// 勘察工程 → 按方向选段定位 → 可编辑草稿 → 成片 MP4；另带工作台界面命令。
+// 勘察短剧目录 → 按方向选段 → 火山语音识别取台词时间码 → 可编辑草稿 → 成片 MP4；另带工作台界面命令。
 import { mkdir } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { editingSession, installEditingContext, normalize, perform, prepareCutSettings, recordProgress, recordResult } from './lib/studio.js'
-import { loadDraftJson, parseDraft } from './lib/draft.js'
-import { revisionEdit, revisionSource } from './lib/revision.js'
-import { ffmpegPath } from './lib/frames.js'
+import { revisionEdit, revisionEpisode } from './lib/revision.js'
+import { ffmpegPath, ffprobePath } from './lib/frames.js'
 import { formatPlan, planSlice } from './lib/plan.js'
 import { renderSlice } from './lib/render.js'
 import { formatSurvey, survey } from './lib/report.js'
 import { buildSliceDraft } from './lib/slice-draft.js'
 import { findDraftRoot, safeName } from './lib/draft-root.js'
 
-const PLUGIN_VERSION = '0.1.6'
-const BUNDLED_FONT = fileURLToPath(new URL('./assets/fonts/TikTokSansDisplayDark-Bold.ttf', import.meta.url))
+const PLUGIN_VERSION = '0.2.0'
 
-const DEFAULTS = { ffmpegPath: '', workDir: '', draftRoot: '', subtitleFont: BUNDLED_FONT, exportDir: '', ending: {} }
+const DEFAULTS = {
+  ffmpegPath: '',
+  workDir: '',
+  draftRoot: '',
+  exportDir: '',
+  // 火山引擎（豆包语音）流式语音识别：台词定位用它，配置优先，其次环境变量 VOLCENGINE_API_KEY。
+  volcApiKey: '',
+  volcResourceId: 'volc.bigasr.sauc.duration',
+  volcEndpoint: 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async',
+  volcPaceMs: 40,
+  ending: {},
+}
 
 function settings(config) {
   return { ...DEFAULTS, ...(config ?? {}) }
 }
 
+function pluginRoot(config) {
+  return settings(config).workDir || join(homedir(), '.dsh', 'plugins', 'dsh-duanju-slice')
+}
+
 function workRoot(config) {
-  const base = settings(config).workDir || join(homedir(), '.dsh', 'plugins', 'dsh-duanju-slice', 'tasks')
-  return base
+  return join(pluginRoot(config), 'tasks')
+}
+
+/** 语音识别缓存：同一素材重复选段不再花识别费。 */
+function cacheRoot(config) {
+  return join(pluginRoot(config), 'cache')
 }
 
 /**
@@ -58,45 +74,47 @@ function output(summary) {
   return { schema: { type: 'object', additionalProperties: true, description: summary }, render: (_args, value) => [text(value)] }
 }
 
+const DRAMA_DIR = { type: 'string', description: '短剧素材目录：一部剧一个文件夹（如 D:\\海外短剧\\艾米莉的混乱房车），每集可以是一个视频文件，也可以是装着视频的文件夹' }
+const SCRIPT_PATH = { type: 'string', description: '剧本 DOCX 路径（含「第X集」分段的中英对照台词）' }
+const DIRECTION = { type: 'string', description: '内容方向，自由文本，如「复仇向：当众揭穿继母」「萌宝向：孩子认亲」' }
+const EPISODE = { type: 'number', description: '可选：手动指定集号（默认由 AI 按方向选）' }
+const LINES = { type: 'array', items: { type: 'number' }, description: '可选：手动指定剧本行号区间，如 [3, 8]（需同时给 episode）' }
+const VERIFY = { type: 'boolean', description: '是否抽首尾帧核验，默认 true' }
+
 const SURVEY_PARAMETERS = {
   type: 'object',
-  properties: {
-    projectDir: { type: 'string', description: '剪映工程目录：里面每集一个 EPxx 草稿文件夹' },
-    scriptPath: { type: 'string', description: '可选：剧本 DOCX 路径，用于核对剧本↔工程配对' },
-  },
-  required: ['projectDir'],
+  properties: { dramaDir: DRAMA_DIR, scriptPath: { ...SCRIPT_PATH, description: '可选：剧本 DOCX 路径，用于核对剧本↔素材配对' } },
+  required: ['dramaDir'],
 }
 
 const PLAN_PARAMETERS = {
   type: 'object',
   properties: {
-    projectDir: { type: 'string', description: '剪映工程目录（每集一个 EPxx 草稿文件夹）' },
-    scriptPath: { type: 'string', description: '剧本 DOCX 路径（含「第X集」分段的中英对照台词）' },
-    direction: { type: 'string', description: '内容方向，自由文本，如「复仇向：当众揭穿继母」「萌宝向：孩子认亲」' },
+    dramaDir: DRAMA_DIR,
+    scriptPath: SCRIPT_PATH,
+    direction: DIRECTION,
     provider: { type: 'string', description: '可选：指定模型 provider' },
     model: { type: 'string', description: '可选：指定模型 model' },
-    verify: { type: 'boolean', description: '是否抽首尾帧核验，默认 true' },
-    drafts: { type: 'array', items: { type: 'string' }, description: '可选：明确指定只用哪些草稿文件夹（可只写文件夹名的一部分）；草稿箱混着多部剧时必须用它，否则插件不会猜' },
-    drama: { type: 'string', description: '可选：剧名，用于匹配剪映本地草稿分组；默认取剧本标题' },
+    verify: VERIFY,
+    episode: EPISODE,
+    lines: LINES,
   },
-  required: ['projectDir', 'scriptPath', 'direction'],
+  required: ['dramaDir', 'scriptPath', 'direction'],
 }
 
 const CUT_PARAMETERS = {
   type: 'object',
   properties: {
-    projectDir: { type: 'string', description: '剪映工程目录（每集一个 EPxx 草稿文件夹）' },
-    scriptPath: { type: 'string', description: '剧本 DOCX 路径（含「第X集」分段的中英对照台词）' },
-    direction: { type: 'string', description: '内容方向，自由文本，如「复仇向：当众揭穿继母」' },
+    dramaDir: DRAMA_DIR,
+    scriptPath: SCRIPT_PATH,
+    direction: DIRECTION,
     exportDir: { type: 'string', description: '成片 MP4 的保存目录' },
-    episode: { type: 'number', description: '可选：手动指定集号（默认由 AI 按方向选）' },
-    lines: { type: 'array', items: { type: 'number' }, description: '可选：手动指定剧本行号区间，如 [3, 8]（需同时给 episode）' },
+    episode: EPISODE,
+    lines: LINES,
     draftRoot: { type: 'string', description: '可选：剪映草稿箱目录，默认自动探测' },
-    verify: { type: 'boolean', description: '是否抽首尾帧核验，默认 true' },
-    drafts: { type: 'array', items: { type: 'string' }, description: '可选：明确指定只用哪些草稿文件夹（可只写文件夹名的一部分）；草稿箱混着多部剧时必须用它，否则插件不会猜' },
-    drama: { type: 'string', description: '可选：剧名，用于匹配剪映本地草稿分组；默认取剧本标题' },
+    verify: VERIFY,
   },
-  required: ['projectDir', 'scriptPath', 'direction', 'exportDir'],
+  required: ['dramaDir', 'scriptPath', 'direction', 'exportDir'],
 }
 
 function stampName() {
@@ -115,22 +133,47 @@ async function deliver(ctx, config, exec, input) {
   const stem = safeName(`${basename(input.settings.scriptPath, '.docx')}_第${input.episode}集`, 20)
   const name = `${stem}_v${version}_${randomUUID().slice(0, 6)}`
   await recordProgress(ctx, exec?.agent?.id, 'draft')
-  const draft = await buildSliceDraft({ episodeDir: input.sourceDir, cut: input.cut, draftRoot, name, audioLevels: input.audioLevels, fontPath: options.subtitleFont || undefined, ffmpeg: ffmpegPath(options.ffmpegPath), ending: options.ending ?? {} })
+  const draft = await buildSliceDraft({
+    episode: input.episodeSource,
+    cut: input.cut,
+    draftRoot,
+    name,
+    audioLevels: input.audioLevels,
+    ffmpeg: ffmpegPath(options.ffmpegPath),
+    ending: options.ending ?? {},
+  })
   await recordProgress(ctx, exec?.agent?.id, 'render')
-  const video = await renderSlice({ episodeDir: draft.draftDir, cut: { start: 0, end: draft.contentDuration ?? draft.duration }, outFile: join(input.settings.exportDir, `${name}.mp4`), fontPath: options.subtitleFont || undefined, ffmpeg: ffmpegPath(options.ffmpegPath), ending: options.ending ?? {}, signal: exec?.signal })
-  const result = await recordResult(ctx, exec?.agent?.id, { episode: input.episode, ...input.cut, draftName: name, draftDir: draft.draftDir, outFile: video.outFile, sourceDir: input.sourceDir, audioLevels: input.audioLevels, note: input.note, settings: input.settings })
-  const media = draft.media ?? { copied: 0, linked: 0, missing: [] }
+  const video = await renderSlice({
+    episodeDir: draft.draftDir,
+    cut: { start: 0, end: draft.contentDuration ?? draft.duration },
+    outFile: join(input.settings.exportDir, `${name}.mp4`),
+    ffmpeg: ffmpegPath(options.ffmpegPath),
+    ffprobe: ffprobePath(ffmpegPath(options.ffmpegPath)),
+    ending: options.ending ?? {},
+    signal: exec?.signal,
+  })
+  const result = await recordResult(ctx, exec?.agent?.id, {
+    episode: input.episode,
+    ...input.cut,
+    draftName: name,
+    draftDir: draft.draftDir,
+    outFile: video.outFile,
+    sourceDir: input.episodeSource?.dir,
+    sourceFiles: input.episodeSource?.parts?.map((part) => part.path),
+    audioLevels: input.audioLevels,
+    note: input.note,
+    settings: input.settings,
+  })
   const summary = [
     `第 ${input.episode} 集 · V${result?.version ?? version} · ${video.duration}s`,
-    `原片时间码：${input.cut.start.toFixed(2)}s–${input.cut.end.toFixed(2)}s`,
+    `素材时间码：${input.cut.start.toFixed(2)}s–${input.cut.end.toFixed(2)}s`,
     video.ending
       ? `片尾：时停定格（剧情结束前 ${video.ending.freezeOffsetSeconds}s 的那一帧）+ 原生「炫光」${video.ending.transitionSeconds}s + 「${video.ending.title}」完整 ${video.ending.soundSeconds}s；剧情 ${video.contentDuration}s，成片 ${video.duration}s`
       : '片尾：已关闭（只输出剧情段）',
     draft.ending
       ? `剪映草稿：${draft.draftDir}\n  · 草稿里也接了同款片尾（时停定格 + 原生「炫光」${draft.ending.transitionSeconds}s + 「${draft.ending.title}」${draft.ending.soundSeconds}s），草稿总长 ${draft.duration}s，剪映直接导出应与成片一致`
       : `剪映草稿：${draft.draftDir}`,
-    `  · 素材已收进草稿目录：新拷 ${media.copied} 个、复用 ${media.linked} 个`,
-    media.missing.length ? `草稿素材缺口：${media.missing.slice(0, 6).join('、')}${media.missing.length > 6 ? ` 等 ${media.missing.length} 条` : ''}（原工程本身就缺文件，这些片段已从草稿里去掉）` : '',
+    video.warnings?.length ? `警告：${video.warnings.join('；')}` : '',
     `成片：${video.outFile}`,
     '已有版本已保留，可以在同一会话继续修改或切回旧版。新草稿需重启剪映后出现在草稿箱。',
   ].filter(Boolean).join('\n')
@@ -141,31 +184,31 @@ export const inject = ['tools', 'agents']
 
 export function apply(ctx, config = {}) {
   const registered = []
+  const options = settings(config)
+  const ffprobe = ffprobePath(ffmpegPath(options.ffmpegPath))
   return ctx.effect(() => {
     registered.push(installEditingContext(ctx))
     registered.push(ctx.tools.register({
       name: 'duanju_slice_survey',
-      description: '短剧切片工作台：只读勘察剪映工程目录，列出每集时长、台词字幕数、首末句、画面段、音频构成，并可与剧本 DOCX 分集配对。工程目录可直接给扁平草稿箱（剪映草稿根目录），会按虚拟文件夹分组和草稿素材里的 EPxxx 识别集号。',
+      description: '短剧切片工作台：只读勘察一部短剧的素材目录，列出每集时长、画面、段数、是否有音轨，并可与剧本 DOCX 分集配对。每集可以是一个视频文件，也可以是装着视频的文件夹（多个视频按文件名顺序拼成这一集）。',
       parameters: SURVEY_PARAMETERS,
-      output: output('工程勘察清单（markdown 表格）'),
+      output: output('素材勘察清单（markdown 表格）'),
       async execute(args) {
-        const report = await survey({ projectDir: args.projectDir, scriptDocx: args.scriptPath })
+        const report = await survey({ dramaDir: args.dramaDir, scriptDocx: args.scriptPath, ffprobe })
         return jsonSafe({ summary: formatSurvey(report), report })
       },
     }))
 
     registered.push(ctx.tools.register({
       name: 'duanju_slice_plan',
-      description: '短剧切片工作台：按内容方向在剧本里选一段连续台词，定位到剪映工程字幕时间码，给出切点并抽首尾帧核验。只读，不写工程文件。',
+      description: '短剧切片工作台：按内容方向在剧本里选一段连续台词，再用火山引擎（豆包语音）流式语音识别拿到这一集台词的真实时间码，给出切点并抽首尾帧核验。只读，不写草稿和成片。',
       parameters: PLAN_PARAMETERS,
       output: output('切片方案（集号、时间码、选中台词、首尾帧）'),
       async execute(args, exec) {
-        const root = workRoot(config)
-        const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
-        const framesDir = join(root, stamp, 'frames')
+        const framesDir = join(workRoot(config), `${stampName()}-${randomUUID().slice(0, 8)}`, 'frames')
         await mkdir(framesDir, { recursive: true })
         const plan = await planSlice({
-          projectDir: args.projectDir,
+          dramaDir: args.dramaDir,
           scriptDocx: args.scriptPath,
           direction: args.direction,
           ctx,
@@ -174,11 +217,14 @@ export function apply(ctx, config = {}) {
           signal: exec?.signal,
           framesDir,
           verification: args.verify !== false,
-          ffmpeg: settings(config).ffmpegPath,
-          drafts: args.drafts,
-          drama: args.drama,
+          ffmpeg: options.ffmpegPath,
+          ffprobe,
+          cacheDir: cacheRoot(config),
+          config,
+          manualPick: args.episode ? { episode: args.episode, lineIds: args.lines } : undefined,
         })
-        return jsonSafe({ summary: formatPlan(plan), plan, framesDir })
+        const { source, ...planView } = plan
+        return jsonSafe({ summary: formatPlan(planView), plan: planView, framesDir })
       },
     }))
 
@@ -186,18 +232,17 @@ export function apply(ctx, config = {}) {
       name: 'duanju_slice_cut',
       description: '按内容方向重新选段，生成同一会话的一个新版本（剪映草稿和MP4），保留旧版。成片末尾默认接剪映原生片尾（时停定格 + 炫光转场 + 大气片尾声效）。仅在用户要求制作时调用；调整当前片段的时长或音量请用 duanju_slice_revise。',
       parameters: CUT_PARAMETERS,
-      output: output('切片结果（集号、时间码、草稿目录、成片路径、首尾帧）'),
+      output: output('切片结果（集号、时间码、草稿目录、成片路径）'),
       async execute(args, exec) {
         try {
-          const currentSettings = normalize({ projectDir: args.projectDir, scriptPath: args.scriptPath, direction: args.direction, exportDir: args.exportDir })
+          const currentSettings = normalize({ dramaDir: args.dramaDir, scriptPath: args.scriptPath, direction: args.direction, exportDir: args.exportDir })
           await prepareCutSettings(exec?.agent?.id, currentSettings)
           await recordProgress(ctx, exec?.agent?.id, 'survey')
-          const options = settings(config)
           const framesDir = join(workRoot(config), `${stampName()}-${randomUUID().slice(0, 8)}`, 'frames')
           await mkdir(framesDir, { recursive: true })
 
           const plan = await planSlice({
-            projectDir: args.projectDir,
+            dramaDir: args.dramaDir,
             scriptDocx: args.scriptPath,
             direction: args.direction,
             ctx,
@@ -205,14 +250,23 @@ export function apply(ctx, config = {}) {
             framesDir,
             verification: args.verify !== false,
             ffmpeg: options.ffmpegPath,
-            drafts: args.drafts,
-            drama: args.drama,
+            ffprobe,
+            cacheDir: cacheRoot(config),
+            config,
             manualPick: args.episode ? { episode: args.episode, lineIds: args.lines } : undefined,
-            onProgress: (stage) => recordProgress(ctx, exec?.agent?.id, stage),
+            onProgress: (stage, detail) => recordProgress(ctx, exec?.agent?.id, stage, detail ? JSON.stringify(detail) : null),
           })
 
-          const delivered = await deliver(ctx, config, exec, { settings: currentSettings, episode: plan.episode, sourceDir: join(plan.projectDir, plan.folder), cut: plan.cut, draftRoot: args.draftRoot, note: args.direction })
-          return jsonSafe({ ...delivered, plan })
+          const delivered = await deliver(ctx, config, exec, {
+            settings: currentSettings,
+            episode: plan.episode,
+            episodeSource: plan.source,
+            cut: plan.cut,
+            draftRoot: args.draftRoot,
+            note: args.direction,
+          })
+          const { source, ...planView } = plan
+          return jsonSafe({ ...delivered, plan: planView })
         } catch (error) {
           await recordProgress(ctx, exec?.agent?.id, 'error', error.message)
           throw error
@@ -222,11 +276,11 @@ export function apply(ctx, config = {}) {
 
     registered.push(ctx.tools.register({
       name: 'duanju_slice_revise',
-      description: '根据当前选中的剪辑版本修改首尾时间、对白/背景音乐/音效音量，生成新草稿和MP4，保留旧版。无需重新选段。省略的设置沿用当前版本；音量倍率相对原工程（当前倍率见会话状态，“再减半”需传当前倍率×0.5）。',
+      description: '根据当前选中的剪辑版本修改首尾时间、对白/背景音乐/音效音量，生成新草稿和MP4，保留旧版。无需重新选段。省略的设置沿用当前版本；音量倍率相对原素材（当前倍率见会话状态，“再减半”需传当前倍率×0.5）。',
       parameters: { type: 'object', properties: {
         start: { type: 'number', description: '相对当前版本开头的起点秒数，默认0；可用负数向前扩展，不能超出原集' },
         end: { type: 'number', description: '相对当前版本开头的终点秒数，默认当前时长；例如保留前25秒传25' },
-        dialogueGain: { type: 'number', minimum: 0, maximum: 4, description: '对白音量倍率，0静音，1原工程音量' },
+        dialogueGain: { type: 'number', minimum: 0, maximum: 4, description: '对白音量倍率，0静音，1原素材音量' },
         musicGain: { type: 'number', minimum: 0, maximum: 4, description: 'BGM音量倍率，0静音，0.5减半' },
         effectsGain: { type: 'number', minimum: 0, maximum: 4, description: '音效音量倍率' },
         note: { type: 'string', description: '本次修改的一句说明' },
@@ -235,13 +289,16 @@ export function apply(ctx, config = {}) {
       async execute(args, exec) {
         try {
           const entry = await editingSession(exec?.agent?.id)
-          const sourceDir = await revisionSource(entry)
+          const episodeSource = await revisionEpisode(entry, { ffprobe })
           await recordProgress(ctx, exec?.agent?.id, 'survey')
-          const loaded = await loadDraftJson(sourceDir)
-          if (!loaded) throw new Error('原集没有可读的草稿数据，无法修改')
-          const parsed = parseDraft(loaded.draft, sourceDir)
-          const edit = revisionEdit(entry.lastResult, args, parsed.duration)
-          const delivered = await deliver(ctx, config, exec, { ...edit, settings: entry.settings, episode: entry.lastResult.episode, sourceDir, note: String(args.note || '对话修改').slice(0, 200) })
+          const edit = revisionEdit(entry.lastResult, args, episodeSource.duration)
+          const delivered = await deliver(ctx, config, exec, {
+            ...edit,
+            settings: entry.settings,
+            episode: entry.lastResult.episode,
+            episodeSource,
+            note: String(args.note || '对话修改').slice(0, 200),
+          })
           return jsonSafe(delivered)
         } catch (error) {
           await recordProgress(ctx, exec?.agent?.id, 'error', error.message)

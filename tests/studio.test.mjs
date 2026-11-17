@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import vm from 'node:vm'
 
@@ -28,10 +28,10 @@ test('progress and output survive reopening without losing concurrent settings',
     const exec = { agent: { id: 's1', followup: (message) => messages.push(message) } }
     const initial = await api.perform(ctx, { action: 'create' }, exec)
     assert.equal(initial.session.configLocked, false)
-    await api.perform(ctx, { action: 'save', settings: { scriptPath: '/剧本.docx', projectDir: '/工程', exportDir: '/成片', direction: '复仇' } }, exec)
+    await api.perform(ctx, { action: 'save', settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' } }, exec)
     const locked = await api.perform(ctx, { action: 'lock' }, exec)
     assert.equal(locked.session.configLocked, true)
-    for (const settings of [{ direction: '亲情' }, { scriptPath: '/新剧本.docx' }, { projectDir: '/新工程' }, { exportDir: '/新成片' }]) {
+    for (const settings of [{ direction: '亲情' }, { scriptPath: '/新剧本.docx' }, { dramaDir: '/新短剧' }, { exportDir: '/新成片' }]) {
       await assert.rejects(api.perform(ctx, { action: 'save', settings }, exec), /配置已锁定/)
       await assert.rejects(api.prepareCutSettings('s1', { ...locked.settings, ...settings }), /配置已锁定/)
     }
@@ -89,7 +89,7 @@ test('progress and output survive reopening without losing concurrent settings',
     assert.equal(reopened.session.task.error, '渲染失败')
     assert.equal(reopened.session.lastResult.outFile, '/成片/out.mp4', 'a failed retry preserves the earlier video')
     const fresh = await api.perform(ctx, { action: 'create' }, exec)
-    assert.equal(fresh.settings.scriptPath, '/剧本.docx')
+    assert.equal(fresh.settings.scriptPath, resolve('/剧本.docx'), '新会话继承素材路径')
     assert.equal(fresh.settings.direction, '')
     assert.equal(fresh.session.lastResult, null)
     assert.equal(fresh.session.configLocked, false, 'new conversations must not inherit the lock')

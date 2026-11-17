@@ -6,8 +6,8 @@ window.__ModuleLoader__.load({
     const NS = 'duanju-slice';
     const CONVERSATION = 'duanju.slice.conversation';
     const CACHE_KEY = 'dsh-duanju-slice:lastSessionId:v1';
-    const defaults = { scriptPath: '', projectDir: '', exportDir: '', direction: '' };
-    const fields = ['scriptPath', 'projectDir', 'exportDir'];
+    const defaults = { scriptPath: '', dramaDir: '', exportDir: '', direction: '' };
+    const fields = ['scriptPath', 'dramaDir', 'exportDir'];
     const dictionaries = {
       zh: {
         'task.current': '当前会话', 'task.close': '收起会话列表', 'sessions.list': '会话列表', title: '切片工作台', sessions: '剪辑会话', 'sessions.new': '新建会话', 'sessions.empty': '还没有剪辑会话',
@@ -15,10 +15,10 @@ window.__ModuleLoader__.load({
         'sessions.removeConfirm': '将这条任务移出列表？对话记录、成片和草稿都会保留。',
         'sessions.noResult': '等待配置', 'sessions.done': '第 {episode} 集 · {start}–{end}',
         'ago.now': '刚刚', 'ago.minute': '{n} 分钟', 'ago.hour': '{n} 小时', 'ago.day': '{n} 天',
-        scriptPath: '剧本 DOCX', projectDir: '剪映工程目录', exportDir: '成片保存目录', direction: '切片方向',
-        'empty.scriptPath': '选择剧本文件', 'empty.projectDir': '选择逐集工程所在文件夹', 'empty.exportDir': '选择成片保存位置',
-        'help.scriptPath': '按剧本选段，再用工程字幕定位', 'help.projectDir': '包含 EP001、EP002 等各集草稿的目录', 'help.exportDir': 'MP4 将保存到这里，原工程保持不变',
-        'missing.scriptPath': '请先选择剧本', 'missing.projectDir': '请选择剪映工程目录', 'missing.exportDir': '请选择成片保存目录', 'missing.direction': '再写下这一条想剪的方向',
+        scriptPath: '剧本 DOCX', dramaDir: '短剧目录', exportDir: '成片保存目录', direction: '切片方向',
+        'empty.scriptPath': '选择剧本文件', 'empty.dramaDir': '选择短剧所在文件夹', 'empty.exportDir': '选择成片保存位置',
+        'help.scriptPath': '按剧本选段，再用语音识别定位台词', 'help.dramaDir': '每集一个视频，或每集一个文件夹放视频', 'help.exportDir': 'MP4 将保存到这里，原素材保持不变',
+        'missing.scriptPath': '请先选择剧本', 'missing.dramaDir': '请选择短剧目录', 'missing.exportDir': '请选择成片保存目录', 'missing.direction': '再写下这一条想剪的方向',
         'form.title': '开始一段剪辑对话', 'form.subtitle': '先聊想法，再生成；在同一会话里持续修改。',
         'form.sources': '素材与输出', 'form.direction': '这一条，想剪什么？', 'form.directionHelp': '描述想突出的冲突、人物或情节。越具体，选段越有针对性。',
         'placeholder.direction': '例如：复仇向，突出女主当众揭穿谎言的片段，结尾保留悬念。',
@@ -34,14 +34,14 @@ window.__ModuleLoader__.load({
         'result.video': 'MP4 成片', 'result.draft': '剪映草稿', 'result.pending': '完成后生成', 'result.open': '打开成片', 'result.reveal': '查看文件', 'result.draftOpen': '打开草稿目录',
         'result.draftHint': '剪映在启动时扫描草稿箱。新草稿生成后，请重启剪映再打开。',
         'progress.title': '正在制作这条切片', 'progress.help': '进度来自实际剪辑流程，可以切换任务或展开对话查看详情。',
-        'progress.queued': '等待剪辑助手启动', 'progress.survey': '正在读取工程与剧本', 'progress.pick': '正在选段并定位字幕', 'progress.pick-subtitles': '正在核对工程字幕', 'progress.frames': '正在核对首尾帧', 'progress.draft': '正在生成剪映草稿', 'progress.render': '正在渲染成片',
+        'progress.queued': '等待剪辑助手启动', 'progress.survey': '正在读取素材与剧本', 'progress.pick': '正在选段', 'progress.asr': '正在语音识别台词', 'progress.pick-subtitles': '正在核对识别台词', 'progress.frames': '正在核对首尾帧', 'progress.draft': '正在生成剪映草稿', 'progress.render': '正在渲染成片',
         'step.survey': '读取素材', 'step.pick': '选段定位', 'step.draft': '生成草稿', 'step.render': '渲染成片',
         'progress.stopped': '任务已停止', 'progress.stoppedHelp': '本次没有收到完成结果。可展开对话查看原因，或重新开始。', 'progress.failed': '这次切片未完成',
         'progress.refreshError': '进度暂时无法刷新，请稍后重试或查看对话。', 'progress.pending': '剪辑助手需要你确认，请展开对话处理。',
         'chat.open': '展开对话', 'chat.close': '收起对话', 'chat.title': '剪辑助手', 'chat.help': '说说想法，或直接说“保留前25秒、音乐减半”', 'chat.details': '查看执行详情',
         choose: '选择', change: '更换', cancel: '取消', confirm: '知道了', notice: '请检查任务信息', retry: '重试',
         'status.loading': '读取中', 'status.saved': '已保存', 'status.saving': '保存中…', 'status.dirty': '待保存', 'status.error': '保存失败', loading: '正在读取切片任务…',
-        'validation.paths': '请先选择剧本、工程目录和保存目录，并填写切片方向。', 'validation.docx': '剧本必须是 .docx 文件。',
+        'validation.paths': '请先选择剧本、短剧目录和保存目录，并填写切片方向。', 'validation.docx': '剧本必须是 .docx 文件。',
         'error.open': '读取任务失败：{detail}', 'error.save': '设置保存失败：{detail}', 'error.prompt': '启动失败：{detail}', 'error.session': '任务操作失败：{detail}', 'error.pick': '选择失败：{detail}', 'error.output': '无法打开文件：{detail}',
         'error.hostPath': '无法获取本机路径，请使用桌面版或目录浏览器。', 'error.response': '服务返回了无效数据', 'error.command': '操作失败', 'error.unknown': '未知错误，请重试',
         pickerTitle: '选择{field}', pickerHelp: '浏览本机文件，不会上传。', address: '目录路径', go: '前往', parent: '上一级', roots: '常用目录', entries: '目录内容', browsing: '正在读取目录…', empty: '这里没有可选择的项目', truncated: '仅显示前 200 项，请输入更具体的目录。', selectFolder: '选择当前目录', selectFile: '选择此 DOCX', folder: '文件夹', docx: 'DOCX 文件', 'error.browse': '读取目录失败：{detail}',
@@ -50,12 +50,12 @@ window.__ModuleLoader__.load({
       en: {
         'task.current': 'Current conversation', 'task.close': 'Collapse conversation list', 'sessions.list': 'Conversations', title: 'Slice studio', sessions: 'Editing conversations', 'sessions.new': 'New conversation', 'sessions.empty': 'No conversations yet', 'sessions.rename': 'Rename', 'sessions.remove': 'Remove from list', 'sessions.removeAccept': 'Remove', 'sessions.removeConfirm': 'Remove this task from the list? Its conversation, video and draft will be kept.', 'sessions.noResult': 'Needs setup', 'sessions.done': 'Episode {episode} · {start}–{end}',
         'ago.now': 'now', 'ago.minute': '{n}m', 'ago.hour': '{n}h', 'ago.day': '{n}d',
-        scriptPath: 'Script DOCX', projectDir: 'Jianying projects', exportDir: 'Export folder', direction: 'Slice direction', 'empty.scriptPath': 'Choose a script', 'empty.projectDir': 'Choose the episode project folder', 'empty.exportDir': 'Choose where to save the video', 'help.scriptPath': 'Pick from the script, locate using project subtitles', 'help.projectDir': 'A folder containing EP001, EP002 and other episode drafts', 'help.exportDir': 'The MP4 is saved here; source projects stay intact', 'missing.scriptPath': 'Choose a script first', 'missing.projectDir': 'Choose a project folder', 'missing.exportDir': 'Choose an export folder', 'missing.direction': 'Describe the direction for this slice',
+        scriptPath: 'Script DOCX', dramaDir: 'Drama folder', exportDir: 'Export folder', direction: 'Slice direction', 'empty.scriptPath': 'Choose a script', 'empty.dramaDir': 'Choose the drama folder', 'empty.exportDir': 'Choose where to save the video', 'help.scriptPath': 'Pick from the script, locate lines by speech recognition', 'help.dramaDir': 'One video per episode, or one folder per episode', 'help.exportDir': 'The MP4 is saved here; source footage stays intact', 'missing.scriptPath': 'Choose a script first', 'missing.dramaDir': 'Choose a drama folder', 'missing.exportDir': 'Choose an export folder', 'missing.direction': 'Describe the direction for this slice',
         'form.title': 'Start an editing conversation', 'form.subtitle': 'Discuss an idea, generate a version, then keep refining it here.', 'form.sources': 'Sources & output', 'form.direction': 'What should this slice focus on?', 'form.directionHelp': 'Describe a conflict, character or moment. Specific details help select the scene.', 'placeholder.direction': 'For example: revenge — expose the lie in public, ending on a cliffhanger.', 'form.examples': 'Try a direction', 'example.revenge': 'Revenge', 'example.reveal': 'Expose a lie', 'example.family': 'Family conflict', 'value.revenge': 'Revenge: focus on the turn from being bullied to fighting back.', 'value.reveal': 'Expose a lie in public, include the reaction, and end at the peak of the conflict.', 'value.family': 'Family conflict: focus on misunderstandings, confrontations and emotional turns.', 'form.ready': 'Confirmation locks these settings. Start a new conversation to change them.', 'form.done': 'Keep refining in this conversation. Earlier versions are retained.',
         generate: 'Generate first version', 'generate.running': 'Making your slice…', 'generate.more': 'Cut a new version', 'chat.edit': 'Chat to edit', 'chat.continue': 'Continue editing', 'chat.running': 'Replying…', 'badge.chatting': 'In conversation', 'badge.setup': 'Needs setup', 'badge.ready': 'Ready', 'badge.running': 'Running', 'badge.done': 'Ready to edit', 'badge.error': 'Incomplete', 'badge.waiting': 'Needs confirmation',
         'preview.title': 'Video preview', 'preview.empty': 'Your video will appear here', 'preview.help': 'Choose sources, describe a direction, then start.', 'preview.loading': 'Loading video…', 'preview.failed': 'Preview unavailable. You can open the video directly.', 'preview.large': 'This video exceeds the inline preview limit. Open it directly.', 'preview.retry': 'Reload preview',
         'result.title': 'Current edit', 'result.previous': 'Previous successful video', 'result.episode': 'Episode {episode}', 'result.duration': '{n} seconds', 'result.range': 'Source {start}–{end}', 'result.video': 'MP4 video', 'result.draft': 'Jianying draft', 'result.pending': 'Available when complete', 'result.open': 'Open video', 'result.reveal': 'Show file', 'result.draftOpen': 'Open draft folder', 'result.draftHint': 'Restart Jianying after generation so the new draft appears in its draft library.',
-        'progress.title': 'Making your slice', 'progress.help': 'Progress follows the actual editing pipeline. Switch tasks or open chat for details.', 'progress.queued': 'Waiting for the editing agent', 'progress.survey': 'Reading projects and script', 'progress.pick': 'Selecting and locating a scene', 'progress.pick-subtitles': 'Checking project subtitles', 'progress.frames': 'Checking first and last frames', 'progress.draft': 'Writing the Jianying draft', 'progress.render': 'Rendering the video', 'step.survey': 'Read sources', 'step.pick': 'Locate scene', 'step.draft': 'Write draft', 'step.render': 'Render video', 'progress.stopped': 'Task stopped', 'progress.stoppedHelp': 'No completion result was received. Open chat for details or try again.', 'progress.failed': 'This slice could not finish', 'progress.refreshError': 'Progress could not refresh. Retry shortly or check chat.', 'progress.pending': 'The editing agent needs your confirmation. Open chat to respond.',
+        'progress.title': 'Making your slice', 'progress.help': 'Progress follows the actual editing pipeline. Switch tasks or open chat for details.', 'progress.queued': 'Waiting for the editing agent', 'progress.survey': 'Reading footage and script', 'progress.pick': 'Selecting a scene', 'progress.asr': 'Recognizing dialogue', 'progress.pick-subtitles': 'Checking recognized dialogue', 'progress.frames': 'Checking first and last frames', 'progress.draft': 'Writing the Jianying draft', 'progress.render': 'Rendering the video', 'step.survey': 'Read sources', 'step.pick': 'Locate scene', 'step.draft': 'Write draft', 'step.render': 'Render video', 'progress.stopped': 'Task stopped', 'progress.stoppedHelp': 'No completion result was received. Open chat for details or try again.', 'progress.failed': 'This slice could not finish', 'progress.refreshError': 'Progress could not refresh. Retry shortly or check chat.', 'progress.pending': 'The editing agent needs your confirmation. Open chat to respond.',
         'chat.open': 'Open chat', 'chat.close': 'Close chat', 'chat.title': 'Editing assistant', 'chat.help': 'Discuss an idea, or say “keep the first 25s and halve the music”', 'chat.details': 'View execution details', 'result.versions': 'Switch edit version', 'result.version': 'V{version} · {n}s',
         'config.title': 'Sources and direction', 'config.lock': 'Confirm and lock settings', 'config.locked': 'Settings locked', 'config.noDirection': 'No direction yet', 'editor.open': 'Open Jianying', 'editor.opening': 'Opening…', 'error.editor': '{detail}',
         choose: 'Choose', change: 'Change', cancel: 'Cancel', confirm: 'OK', notice: 'Check task information', retry: 'Retry', 'status.loading': 'Loading', 'status.saved': 'Saved', 'status.saving': 'Saving…', 'status.dirty': 'Unsaved', 'status.error': 'Save failed', loading: 'Loading slice tasks…',
@@ -74,7 +74,7 @@ window.__ModuleLoader__.load({
     function validation(value, generating = false) {
       const settings = normalize(value);
       if (settings.scriptPath && !/\.docx$/i.test(settings.scriptPath)) return 'validation.docx';
-      if (generating && (!settings.scriptPath || !settings.projectDir || !settings.exportDir || !settings.direction)) return 'validation.paths';
+      if (generating && (!settings.scriptPath || !settings.dramaDir || !settings.exportDir || !settings.direction)) return 'validation.paths';
       return null;
     }
     function changedSettings(value, patch) { return { ...value, ...patch }; }
@@ -571,8 +571,9 @@ window.__ModuleLoader__.load({
             catch (error) { if (alive.current) reportNotice({ key: 'error.output', detail: detail(error) }); }
           }
           const stage = ['survey', 'pick', 'draft', 'render'];
-          const stageIndex = task?.stage === 'frames' || task?.stage === 'pick-subtitles' ? 1 : stage.indexOf(task?.stage);
-          const progressText = pending ? 'progress.pending' : 'progress.' + (stageIndex < 0 ? 'queued' : task.stage);
+          const stageIndex = task?.stage === 'frames' || task?.stage === 'asr' || task?.stage === 'pick-subtitles' ? 1 : stage.indexOf(task?.stage);
+          const progressKey = task?.stage === 'asr' || task?.stage === 'asr-cached' ? 'pick' : task?.stage;
+          const progressText = pending ? 'progress.pending' : 'progress.' + (stageIndex < 0 ? 'queued' : progressKey);
           return h('div', { className: 'wb-shell', 'data-chat-open': chatOpen, 'data-started': started },
             h('input', { ref: scriptInput, type: 'file', accept: '.docx', hidden: true, onChange: selectScript }),
             h('header', { className: 'wb-bar', 'data-window-drag': true },

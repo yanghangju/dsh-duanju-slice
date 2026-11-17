@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { test } from 'node:test'
 import { renderSlice } from '../lib/render.js'
 import { ffmpegPath, ffprobePath } from '../lib/frames.js'
 import { ENDING_SOUND, ENDING_TRANSITION } from '../lib/ending.js'
+import { tempDir } from './support.mjs'
 
 const exec = promisify(execFile)
 const ffmpeg = ffmpegPath()
@@ -49,11 +49,11 @@ async function draftOf(dir, seconds) {
 }
 
 test('slice export ends with freeze + native 炫光 + full 大气片尾声效', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'slice-ending-'))
+  const dir = await tempDir('slice-ending-')
   try {
     await draftOf(dir, 3)
     const outFile = join(dir, 'with-ending.mp4')
-    const result = await renderSlice({ episodeDir: dir, cut: { start: 0, end: 3 }, outFile, burnSubtitles: false, ffmpeg })
+    const result = await renderSlice({ episodeDir: dir, cut: { start: 0, end: 3 }, outFile, ffmpeg })
 
     assert.ok(result.ending, '默认必须接片尾')
     assert.equal(result.ending.title, ENDING_SOUND.title)
@@ -88,11 +88,11 @@ test('slice export ends with freeze + native 炫光 + full 大气片尾声效', 
 })
 
 test('ending can be disabled to export only the story part', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'slice-no-ending-'))
+  const dir = await tempDir('slice-no-ending-')
   try {
     await draftOf(dir, 2)
     const outFile = join(dir, 'no-ending.mp4')
-    const result = await renderSlice({ episodeDir: dir, cut: { start: 0, end: 2 }, outFile, burnSubtitles: false, ffmpeg, ending: { enabled: false } })
+    const result = await renderSlice({ episodeDir: dir, cut: { start: 0, end: 2 }, outFile, ffmpeg, ending: { enabled: false } })
     assert.equal(result.ending, null)
     assert.equal(result.totalDuration, 2)
     const total = await duration(outFile)

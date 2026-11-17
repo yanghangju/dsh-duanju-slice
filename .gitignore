@@ -9,6 +9,9 @@ dist/
 # local scratch
 .tmp/
 tmp/
+.probe/
+.test-tmp/
+.duanju-cache/
 
 # logs
 *.log

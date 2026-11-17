@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { test } from 'node:test'
 import { renderSlice } from '../lib/render.js'
 import { ffmpegPath, ffprobePath } from '../lib/frames.js'
+import { tempDir } from './support.mjs'
 
 const exec = promisify(execFile)
 
 test('picture-in-picture windows and frame rounding do not shorten the exported timeline', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'slice-render-'))
+  const dir = await tempDir('slice-render-')
   const ffmpeg = ffmpegPath()
   try {
     const media = join(dir, 'red.mp4')
@@ -26,7 +26,7 @@ test('picture-in-picture windows and frame rounding do not shorten the exported 
       ],
     }))
     const outFile = join(dir, 'slice.mp4')
-    await renderSlice({ episodeDir: dir, cut: { start: 0, end: 1 }, outFile, burnSubtitles: false, ffmpeg, ending: { enabled: false } })
+    await renderSlice({ episodeDir: dir, cut: { start: 0, end: 1 }, outFile, ffmpeg, ending: { enabled: false } })
     const { stdout } = await exec(ffprobePath(ffmpeg), ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames,duration', '-of', 'json', outFile])
     const video = JSON.parse(stdout).streams[0]
     assert.equal(Number(video.nb_frames), 30)
@@ -37,7 +37,7 @@ test('picture-in-picture windows and frame rounding do not shorten the exported 
 })
 
 test('video sound is not mixed again when a separate dialogue track already supplies it', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'slice-dialogue-'))
+  const dir = await tempDir('slice-dialogue-')
   const ffmpeg = ffmpegPath()
   try {
     const media = join(dir, 'voice.mp4')
@@ -45,7 +45,7 @@ test('video sound is not mixed again when a separate dialogue track already supp
     const segment = (id, material_id) => ({ id, material_id, source_timerange: { duration: 1e6 }, target_timerange: { duration: 1e6 } })
     await writeFile(join(dir, 'draft_info.json'), JSON.stringify({ duration: 1e6, canvas_config: { width: 160, height: 96 }, materials: { videos: [{ id: 'video', type: 'video', path: media }], audios: [{ id: 'voice', type: 'video_original_sound', path: media }] }, tracks: [{ type: 'video', segments: [segment('picture', 'video')] }, { type: 'audio', segments: [segment('dialogue', 'voice')] }] }))
     const outFile = join(dir, 'slice.mp4')
-    const result = await renderSlice({ episodeDir: dir, cut: { start: 0, end: 1 }, outFile, burnSubtitles: false, ffmpeg, ending: { enabled: false } })
+    const result = await renderSlice({ episodeDir: dir, cut: { start: 0, end: 1 }, outFile, ffmpeg, ending: { enabled: false } })
     const rms = async file => {
       const { stdout } = await exec(ffmpeg, ['-v', 'error', '-i', file, '-vn', '-ac', '1', '-ar', '8000', '-f', 'f32le', '-'], { encoding: 'buffer' })
       const samples = new Float32Array(stdout.buffer, stdout.byteOffset, stdout.length / 4)
