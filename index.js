@@ -13,7 +13,7 @@ import { formatSurvey, survey } from './lib/report.js'
 import { buildSliceDraft } from './lib/slice-draft.js'
 import { findDraftRoot, safeName } from './lib/draft-root.js'
 
-const PLUGIN_VERSION = '0.2.1'
+const PLUGIN_VERSION = '0.2.2'
 
 const DEFAULTS = {
   ffmpegPath: '',

@@ -1,6 +1,6 @@
 {
   "name": "dsh-duanju-slice",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "短剧切片工作台：按内容方向从短剧素材目录里定位精彩片段，产出可编辑剪映草稿与成片 MP4。",
   "keywords": [
     "dsh",
