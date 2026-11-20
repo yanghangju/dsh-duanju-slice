@@ -1,4 +1,4 @@
-// 工具注册面：宿主侧确实注册了这四个工具 / 一条命令，参数名对得上，勘察工具能真的跑。
+// 工具注册面：高级流程、工作台命令与真实只读勘察。
 import assert from 'node:assert/strict'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -7,12 +7,12 @@ import vm from 'node:vm'
 import { readFile } from 'node:fs/promises'
 import { cleanup, hasFfmpeg, makeVideo, tempDir } from './support.mjs'
 
-async function loadPlugin() {
+async function loadPlugin(overrides = {}) {
   const url = new URL('../index.js', import.meta.url)
   const context = vm.createContext({ console, Buffer, process, URL, fetch, setTimeout, clearTimeout, AbortController, crypto: globalThis.crypto })
   const source = new vm.SourceTextModule(await readFile(url, 'utf8'), { context, initializeImportMeta: (meta) => { meta.url = url.href } })
   await source.link(async (name) => {
-    const values = await import(name.startsWith('.') ? new URL(name, url).href : name)
+    const values = overrides[name] ?? await import(name.startsWith('.') ? new URL(name, url).href : name)
     return new vm.SyntheticModule(Object.keys(values), function () {
       for (const [key, value] of Object.entries(values)) this.setExport(key, value)
     }, { context })
@@ -23,19 +23,20 @@ async function loadPlugin() {
   const ctx = {
     effect: (callback) => callback(),
     on: () => () => {},
-    get: (key) => (key === 'commands' ? { register: (spec) => { commands.push(spec); return () => {} } } : null),
+    get: (key) => key === 'commands' ? { register: (spec) => { commands.push(spec); return () => {} } }
+      : key === 'agents' ? { turnBoundaryOf: session => ({ openTurnStartSeq: session.openTurnStartSeq }) } : null,
     tools: { register: (spec) => { tools.set(spec.name, spec); return () => {} } },
   }
   source.namespace.apply(ctx, { ffmpegPath: '' })
   return { tools, commands, version: source.namespace.version }
 }
 
-test('注册面：四个工具 + 一条工作台命令，参数用短剧目录而不是剪映工程目录', async () => {
+test('注册面：高级剪辑与环境配置用原工作台命令，无旧 ASR 直剪入口', async () => {
   const { tools, commands, version } = await loadPlugin()
-  assert.deepEqual([...tools.keys()].sort(), ['duanju_slice_cut', 'duanju_slice_plan', 'duanju_slice_revise', 'duanju_slice_survey', 'duanju_slice_versions'])
+  assert.deepEqual([...tools.keys()].sort(), ['duanju_slice_advanced', 'duanju_slice_cut', 'duanju_slice_plan', 'duanju_slice_revise', 'duanju_slice_setup_runtime', 'duanju_slice_survey', 'duanju_slice_versions'])
   assert.equal(commands.length, 1)
   assert.equal(commands[0].name, 'duanju-slice')
-  assert.match(version, /^0\.2\./)
+  assert.match(version, /^0\.3\./)
 
   for (const name of ['duanju_slice_survey', 'duanju_slice_plan', 'duanju_slice_cut']) {
     const parameters = tools.get(name).parameters
@@ -46,8 +47,67 @@ test('注册面：四个工具 + 一条工作台命令，参数用短剧目录�
   }
   const cut = tools.get('duanju_slice_cut').parameters
   assert.deepEqual([...cut.required], ['dramaDir', 'scriptPath', 'direction', 'exportDir'])
-  assert.match(tools.get('duanju_slice_plan').description, /语音识别/)
-  assert.match(tools.get('duanju_slice_cut').description, /片尾/)
+  assert.equal(cut.properties.lines, undefined)
+  assert.equal(cut.properties.verify, undefined)
+  assert.match(tools.get('duanju_slice_plan').description, /plan\.json.*不会定位、抽帧/)
+  assert.match(tools.get('duanju_slice_cut').description, /优先用分集字幕定位.*自动使用现有语音识别.*不停下来询问用户.*抽帧核验动作.*不生成 Word/)
+  assert.equal(cut.properties.subtitleDir.type, 'string')
+  assert.equal(tools.get('duanju_slice_plan').parameters.properties.subtitleDir.type, 'string')
+  const revise = tools.get('duanju_slice_revise').parameters
+  for (const schema of [cut, tools.get('duanju_slice_plan').parameters, revise]) {
+    assert.equal(schema.properties.bgmVolume, undefined)
+    assert.equal(schema.properties.musicGain, undefined)
+  }
+  const staged = tools.get('duanju_slice_advanced')
+  assert.ok(!staged.parameters.properties.action.enum.includes('confirm'))
+  assert.ok(staged.parameters.properties.action.enum.includes('proposal'))
+  assert.ok(staged.parameters.properties.action.enum.includes('render'))
+  assert.ok(!staged.parameters.properties.action.enum.includes('prepare'))
+  assert.match((await staged.execute({ action: 'guide' }, {})).summary, /duanju_slice_cut/)
+})
+
+test('配置入口只发普通对话消息，一次授权仅适用于该提示所在回合', async () => {
+  let installed = false
+  let installs = 0
+  const sent = [], events = []
+  const { tools, commands } = await loadPlugin({ './lib/promo/runtime-setup.js': {
+    configuredRuntime: () => installed ? {} : null,
+    runtimeOptions: config => ({ ...config, ffmpegPath: 'saved-path' }),
+    configureRuntime: async (config) => {
+      assert.equal(config.ffmpegPath, undefined, '复检不会被已保存的路径覆盖')
+      installs++; installed = true; return { ready: true }
+    },
+  } })
+  const handler = commands[0].handler
+  const signal = new AbortController().signal
+  const session = { openTurnStartSeq: 0, snapshotEvents: start => events.slice(start) }
+  const agent = { id: 'setup', session, followup: message => { sent.push(message) } }
+  const command = async (action) => {
+    const reply = await handler({ rawInput: JSON.stringify({ action }), agent, signal })
+    assert.equal(reply.kind, 'success', reply.text)
+    return JSON.parse(reply.text)
+  }
+  const tool = tools.get('duanju_slice_setup_runtime')
+  const run = () => tool.execute({}, { agent, signal })
+  assert.deepEqual(await command('runtime-status'), { ready: false })
+  assert.throws(run, /请先.*配置运行环境/)
+  assert.deepEqual(await command('runtime-prompt'), { accepted: true })
+  assert.equal(installs, 0, '点击只发普通聊天消息，不执行安装')
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0].role, 'user')
+  assert.match(sent[0].content[0].text, /duanju_slice_setup_runtime/)
+  assert.match(sent[0].content[0].text, /新建会话/)
+  assert.throws(run, /请先/, '仍在排队的提示不能给当前回合授权')
+  events.push({ type: 'user/message', data: sent[0] })
+  session.openTurnStartSeq = 1
+  assert.throws(run, /请先/, '已结束回合里的配置请求不能给后来回合授权')
+  assert.deepEqual(await command('runtime-prompt'), { accepted: true })
+  events.push({ type: 'user/message', data: sent[1] })
+  assert.throws(() => tool.execute({}, { agent: { id: 'other', session: { ...session } }, signal }), /请先/)
+  assert.deepEqual(await run(), { ready: true })
+  assert.throws(run, /请先/, '一次点击只允许调用一次')
+  assert.deepEqual(await command('runtime-status'), { ready: true })
+  assert.equal(installs, 1)
 })
 
 test('勘察工具：真的扫短剧目录并返回清单', { skip: !hasFfmpeg }, async () => {

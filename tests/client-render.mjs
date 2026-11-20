@@ -15,12 +15,13 @@ vm.runInNewContext(await readFile(new URL('../client.js', import.meta.url), 'utf
 })
 const captured = new Map()
 let dictionary
+let locale = 'zh'
 plugin.apply({
   effect: (fn) => fn(), get: () => ({}),
   locale: {
-    register: (_ns, dict) => { dictionary = dict.zh },
-    bind: () => (key, values = {}) => (dictionary[key] || key).replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match),
-    subscribe: () => () => {}, getSnapshot: () => 'zh',
+    register: (_ns, dict) => { dictionary = dict },
+    bind: () => (key, values = {}) => (dictionary[locale][key] || key).replace(/\{(\w+)\}/g, (match, name) => values[name] ?? match),
+    subscribe: () => () => {}, getSnapshot: () => locale,
   },
   slots: { inject: (_name, fn) => fn(), register: (spec, component) => { captured.set(spec.name, component) } },
 })
@@ -40,32 +41,100 @@ function render(patch = {}, running = false) {
   }))
 }
 
-test('the conversation list is visible by default with an explicit collapse control', () => {
+test('the workbench checks the saved runtime before opening any editing conversation', () => {
   const html = renderToStaticMarkup(React.createElement(captured.get('main'), {
     SessionProvider: ({ children }) => children, renderSlot: () => null,
   }))
-  assert.match(html, /<aside[^>]*aria-label="会话列表"/)
-  assert.match(html, /<button[^>]*aria-label="收起会话列表"/)
-  assert.doesNotMatch(html, /class="wb-task-popup"/)
+  assert.match(html, /role="status"[^>]*><span>正在读取运行环境状态…/)
+  assert.doesNotMatch(html, /<aside[^>]*aria-label="会话列表"|class="wb-form"/)
 })
 
-test('new conversations allow initial configuration before confirmation', () => {
+test('setup keeps native chat, with a new conversation action only after verification', () => {
+  const setup = (patch, pendingInteraction) => renderToStaticMarkup(React.createElement(captured.get('duanju.slice.conversation'), {
+    setup: { sessionId: 'setup', ...patch },
+    useSession: select => select({ running: false }),
+    useSessionStatus: select => select(new Map([['setup', { pendingInteraction }]])),
+    renderFactorySlot: (slot, props) => {
+      assert.equal(slot, 'conversation.content')
+      assert.equal(props.variant, 'embedded')
+      return React.createElement('textarea', { 'aria-label': '原生聊天输入' })
+    },
+  }))
+  const waiting = setup({})
+  assert.match(waiting, /重新检查状态/)
+  assert.match(waiting, /重新发送配置请求/)
+  assert.doesNotMatch(waiting, /新建会话|class="wb-form"/)
+  assert.match(setup({}, { key: 'confirmation' }), /请在下方对话确认或回复后继续/)
+  const complete = setup({ complete: true, failure: '任务操作失败：无法新建会话' })
+  assert.match(complete, /aria-label="原生聊天输入"/)
+  assert.match(complete, />新建会话<\/button>/)
+  assert.match(complete, /role="alert">任务操作失败：无法新建会话/)
+  assert.doesNotMatch(complete, /重新发送配置请求|环境配置操作失败/)
+})
+
+test('new conversations explain subtitle priority and automatic fallback while settings are editable', () => {
   const html = render()
   assert.match(html, /<textarea[^>]*id="[^"]*"[^>]*>/)
-  const confirm = html.match(/<button\b[^>]*class="wb-primary"[^>]*>[\s\S]*?<\/button>/)?.[0]
-  assert.match(confirm, /确认并锁定配置/)
-  assert.match(confirm, /disabled=/)
+  const lockButton = html.match(/<button\b[^>]*class="wb-primary"[^>]*>[\s\S]*?<\/button>/)?.[0]
+  assert.match(lockButton, />锁定配置<\/button>/)
+  assert.match(lockButton, /disabled=/)
   assert.doesNotMatch(html, /<textarea[^>]*disabled/)
   assert.match(html, /请先选择剧本/)
-  assert.doesNotMatch(html, /aria-label="原生聊天输入"/)
+  const helpId = html.match(/<button\b[^>]*aria-label="字幕目录（可选） · 选择"[^>]*aria-describedby="([^"]+)"/)?.[1]
+  assert.ok(helpId)
+  assert.ok(html.includes(`id="${helpId}" class="wb-field-hint"`))
+  assert.match(html, /按集号命名的 \.srt（如 EP01\.srt）。缺少可用字幕或未可靠匹配到完整台词时，自动对未定位的台词使用语音识别。留空则直接用语音识别。两种方式定位后均抽帧核验完整动作。/)
+  assert.doesNotMatch(html, /aria-label="原生聊天输入"|aria-label="清除字幕目录"/)
 })
 
-test('ready conversations can confirm and lock configuration', () => {
+test('ready conversations can lock sources and direction without a plan approval', () => {
   const html = render({ settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' } })
-  const confirm = html.match(/<button\b[^>]*class="wb-primary"[^>]*>[\s\S]*?<\/button>/)?.[0]
-  assert.match(confirm, /确认并锁定配置/)
-  assert.doesNotMatch(confirm, /disabled=/)
+  const lockButton = html.match(/<button\b[^>]*class="wb-primary"[^>]*>[\s\S]*?<\/button>/)?.[0]
+  assert.match(lockButton, />锁定配置<\/button>/)
+  assert.doesNotMatch(lockButton, /disabled=/)
   assert.match(html, /复仇<\/textarea>/)
+  assert.match(html, /锁定后不能更改素材、字幕目录、保存位置或方向；需要更改请新建会话。/)
+  assert.doesNotMatch(html, /<input\b[^>]*\btype="(?:range|number)"/)
+})
+
+test('subtitle selection is editable until locking; both paths show the same locate progress', () => {
+  const subtitleDir = String.raw`D:\海外短剧\The Deadly Wedding Ring\字幕`
+  const selected = { ...settings, subtitleDir }
+  const editable = render({ settings: selected })
+  assert.ok(editable.includes(`title="${subtitleDir}" aria-label="字幕目录（可选） · 字幕"`))
+  const clear = editable.match(/<button\b[^>]*aria-label="清除字幕目录"/)[0]
+  assert.doesNotMatch(clear, /disabled=/)
+  assert.match(editable, /自动对未定位的台词使用语音识别/)
+
+  const item = { task: { stage: 'asr' } }
+  const locked = render({ settings: selected, item }, true)
+  assert.ok(locked.includes(`title="字幕目录（可选）：${subtitleDir}"`))
+  assert.match(locked, />字幕优先：字幕<\/span>/)
+  const noSubtitles = render({ item }, true)
+  assert.match(noSubtitles, />台词：语音识别<\/span>/)
+  for (const html of [locked, noSubtitles]) {
+    assert.match(html, /配置已锁定/)
+    assert.match(html, />正在定位台词<\/div>/)
+    assert.doesNotMatch(html, /class="wb-form"|清除字幕目录|正在用语音识别|正在按字幕时间/)
+  }
+})
+
+test('English copy explains subtitle fallback and locking without claiming the locate method', (t) => {
+  locale = 'en'
+  t.after(() => { locale = 'zh' })
+  const ready = { scriptPath: '/script.docx', dramaDir: '/drama', exportDir: '/output', direction: 'Revenge' }
+  const editable = render({ settings: ready })
+  assert.match(editable, /speech recognition runs automatically for unmatched lines only\. Leave empty to use speech recognition from the start\. Either way, frames are checked after locating dialogue to verify the full action\./)
+  assert.match(editable, /Once locked, start a new conversation to change the sources, subtitle folder, export folder, or direction\./)
+  const item = { task: { stage: 'asr-cached' } }
+  const locked = render({ settings: { ...ready, subtitleDir: '/subtitles' }, item }, true)
+  const noSubtitles = render({ settings: ready, item }, true)
+  assert.match(locked, />Subtitles first: subtitles<\/span>/)
+  assert.match(noSubtitles, />Dialogue: speech recognition<\/span>/)
+  for (const html of [locked, noSubtitles]) {
+    assert.match(html, /Settings locked/)
+    assert.match(html, />Locating dialogue<\/div>/)
+  }
 })
 
 test('a generated conversation defaults to compact settings, video and chat', () => {
@@ -133,24 +202,27 @@ test('discussion does not show a fictitious render pipeline', () => {
   assert.doesNotMatch(html, /class="wb-progress\b|正在制作这条切片|正在渲染成片/)
 })
 
-test('pending approvals remain discoverable without opening chat automatically', () => {
+test('a genuine host interaction remains discoverable without opening chat automatically', () => {
   const html = renderToStaticMarkup(React.createElement(captured.get('duanju.slice.conversation'), {
     model, useSession: (select) => select({ running: false, blank: false }),
     useSessionStatus: (select) => select(new Map([['session-1', { pendingInteraction: { key: 'approval-1', kind: 'approval', sessionId: 'session-1' } }]])),
     renderFactorySlot: () => React.createElement('textarea', { 'aria-label': '原生聊天输入' }),
   }))
-  assert.match(html, /剪辑助手需要你确认/)
-  assert.match(html, /等待确认/)
+  assert.match(html, /剪辑助手需要你的回复/)
+  assert.match(html, /需要回复/)
   assert.doesNotMatch(html, /aria-label="原生聊天输入"/)
 })
 
-
-test('confirmation can lock a new conversation without producing a video', () => {
+test('once settings are locked, Generate is enabled and chat explains fixed BGM', () => {
   const html = render({ item: { configLocked: true }, settings: { scriptPath: '/剧本.docx', dramaDir: '/短剧', exportDir: '/成片', direction: '复仇' } })
   assert.match(html, /配置已锁定/)
-  assert.doesNotMatch(html, /class="wb-form"|class="wb-file-choice"|修改配置/)
-  assert.match(html, /生成初版/)
+  assert.doesNotMatch(html, /class="wb-form"|class="wb-file-choice"|修改配置|wb-pending|审核方案|确认方案/)
+  const generateButton = html.match(/<button\b[^>]*class="wb-secondary wb-generate"[^>]*>[\s\S]*?<\/button>/)?.[0]
+  assert.match(generateButton, />生成初版<\/button>/)
+  assert.doesNotMatch(generateButton, /disabled=/)
   assert.match(html, /aria-label="原生聊天输入"/)
+  assert.match(html, /BGM 固定为 −5 dB/)
+  assert.doesNotMatch(html, /音乐减半|<input\b[^>]*\btype="(?:range|number)"/)
 })
 
 test('open Jianying is available before and after configuration is locked', () => {

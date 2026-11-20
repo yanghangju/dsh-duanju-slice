@@ -5,12 +5,12 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { ffmpegPath, ffprobePath } from '../lib/frames.js'
+import { findFfmpeg, findFfprobe } from '../lib/promo/media.js'
 
 const exec = promisify(execFile)
 
-export const ffmpeg = ffmpegPath()
-export const ffprobe = ffprobePath(ffmpeg)
+export const ffmpeg = findFfmpeg() ?? 'ffmpeg'
+export const ffprobe = findFfprobe() ?? 'ffprobe'
 export const hasFfmpeg = spawnSync(ffmpeg, ['-version'], { stdio: 'ignore' }).status === 0
 export const TEMP_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '.test-tmp')
 

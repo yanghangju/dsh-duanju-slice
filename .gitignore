@@ -13,6 +13,14 @@ tmp/
 .test-tmp/
 .duanju-cache/
 
+# generated caches
+__pycache__/
+*.pyc
+duanju-numba-cache/
+
+# python test scratch (advanced/test_runner.py 在 advanced/ 下建临时目录)
+advanced/runner-tests-*/
+
 # logs
 *.log
 npm-debug.log*

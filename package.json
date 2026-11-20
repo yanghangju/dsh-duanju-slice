@@ -1,7 +1,7 @@
 {
   "name": "dsh-duanju-slice",
-  "version": "0.2.3",
-  "description": "短剧切片工作台：按内容方向从短剧素材目录里定位精彩片段，产出可编辑剪映草稿与成片 MP4。",
+  "version": "0.3.0",
+  "description": "短剧切片工作台：用可选 SRT 字幕或语音定位台词，抽帧核验动作，按单曲卡点及 JSON 方案生成 MP4 和剪映草稿。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -9,8 +9,7 @@
     "short-drama",
     "duanju",
     "jianying",
-    "asr",
-    "volcengine",
+    "beat-sync",
     "video-editing"
   ],
   "license": "MIT",
@@ -19,11 +18,15 @@
   "files": [
     "index.js",
     "client.js",
-    "lib",
-    "scripts",
-    "assets",
+    "lib/{studio,report,drama-source,script,docx,zip,asr,locate,websocket}.js",
+    "lib/promo/",
+    "scripts/survey.mjs",
+    "advanced/**/*.py",
+    "advanced/**/*.md",
+    "assets/",
+    "licenses/",
     "cordis.patch.yml",
-    "tests",
+    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render}.*",
     "README.md"
   ],
   "dsh": {
@@ -43,7 +46,7 @@
     }
   },
   "scripts": {
-    "test": "node --experimental-vm-modules --test tests/*.test.mjs",
+    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs",
     "survey": "node scripts/survey.mjs"
   },
   "exports": {

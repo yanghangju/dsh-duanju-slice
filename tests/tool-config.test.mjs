@@ -14,12 +14,11 @@ test('the cut tool rejects configuration changes before selection or media write
       normalize: value => value,
       prepareCutSettings: async () => { events.push('check'); throw new Error('配置已锁定') },
       recordProgress: async (_ctx, _id, stage) => { events.push(stage) },
-      recordResult() {}, perform() {}, editingSession() {}, installEditingContext: () => () => {},
+      recordResult() {}, perform() {}, editingSession() {}, rememberAdvanced() {}, sendWorkbenchPrompt() {}, installEditingContext: () => () => {},
     }
-    else if (name === './lib/plan.js') values = { formatPlan() {}, planSlice: async () => { events.push('plan'); throw new Error('selection must not run') } }
     else {
       values = { ...await import(name.startsWith('.') ? new URL(name, url).href : name) }
-      if (name === 'node:fs/promises') values.mkdir = async () => { events.push('write') }
+      if (name === './lib/promo/advanced.js') values.prepareAdvanced = async () => { events.push('prepare'); throw new Error('media preparation must not run') }
     }
     return new vm.SyntheticModule(Object.keys(values), function () { for (const [key, value] of Object.entries(values)) this.setExport(key, value) }, { context })
   })

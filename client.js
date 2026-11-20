@@ -6,8 +6,10 @@ window.__ModuleLoader__.load({
     const NS = 'duanju-slice';
     const CONVERSATION = 'duanju.slice.conversation';
     const CACHE_KEY = 'dsh-duanju-slice:lastSessionId:v1';
-    const defaults = { scriptPath: '', dramaDir: '', exportDir: '', direction: '' };
-    const fields = ['scriptPath', 'dramaDir', 'exportDir'];
+    const SETUP_KEY = 'dsh-duanju-slice:setupSessionId:v1';
+    const fields = ['scriptPath', 'dramaDir', 'subtitleDir', 'exportDir'];
+    const requiredFields = fields.filter(field => field !== 'subtitleDir');
+    const defaults = normalize({});
     const dictionaries = {
       zh: {
         'task.current': '当前会话', 'task.close': '收起会话列表', 'sessions.list': '会话列表', title: '切片工作台', sessions: '剪辑会话', 'sessions.new': '新建会话', 'sessions.empty': '还没有剪辑会话',
@@ -15,53 +17,68 @@ window.__ModuleLoader__.load({
         'sessions.removeConfirm': '将这条任务移出列表？对话记录、成片和草稿都会保留。',
         'sessions.noResult': '等待配置', 'sessions.done': '第 {episode} 集 · {start}–{end}',
         'ago.now': '刚刚', 'ago.minute': '{n} 分钟', 'ago.hour': '{n} 小时', 'ago.day': '{n} 天',
-        scriptPath: '剧本 DOCX', dramaDir: '短剧目录', exportDir: '成片保存目录', direction: '切片方向',
-        'empty.scriptPath': '选择剧本文件', 'empty.dramaDir': '选择短剧所在文件夹', 'empty.exportDir': '选择成片保存位置',
-        'help.scriptPath': '按剧本选段，再用语音识别定位台词', 'help.dramaDir': '每集一个视频，或每集一个文件夹放视频', 'help.exportDir': 'MP4 将保存到这里，原素材保持不变',
+        scriptPath: '剧本 DOCX', dramaDir: '短剧目录', subtitleDir: '字幕目录（可选）', exportDir: '成片保存目录', direction: '切片方向',
+        'empty.scriptPath': '选择剧本文件', 'empty.dramaDir': '选择短剧所在文件夹', 'empty.subtitleDir': '选择字幕所在文件夹', 'empty.exportDir': '选择成片保存位置',
+        'help.scriptPath': '按剧本选段，定位台词后抽帧核验动作', 'help.dramaDir': '每集一个视频，或每集一个文件夹放视频', 'help.exportDir': 'MP4 将保存到这里，原素材保持不变',
+        'help.subtitleDir': '优先使用按集号命名的 .srt（如 EP01.srt）。缺少可用字幕或未可靠匹配到完整台词时，自动对未定位的台词使用语音识别。留空则直接用语音识别。两种方式定位后均抽帧核验完整动作。', 'clear.subtitleDir': '清除字幕目录', 'config.subtitles': '字幕优先：{name}', 'config.noSubtitles': '台词：语音识别',
         'missing.scriptPath': '请先选择剧本', 'missing.dramaDir': '请选择短剧目录', 'missing.exportDir': '请选择成片保存目录', 'missing.direction': '再写下这一条想剪的方向',
-        'form.title': '开始一段剪辑对话', 'form.subtitle': '先聊想法，再生成；在同一会话里持续修改。',
+        'form.title': '开始一段剪辑对话', 'form.subtitle': '设置素材和方向后即可开始剪辑，在同一会话里持续修改。',
         'form.sources': '素材与输出', 'form.direction': '这一条，想剪什么？', 'form.directionHelp': '描述想突出的冲突、人物或情节。越具体，选段越有针对性。',
         'placeholder.direction': '例如：复仇向，突出女主当众揭穿谎言的片段，结尾保留悬念。',
         'form.examples': '试试这样写', 'example.revenge': '复仇反转', 'example.reveal': '当众揭穿', 'example.family': '亲情冲突',
         'value.revenge': '复仇向：人物从被欺负到反击，突出反转与情绪爆发。', 'value.reveal': '当众揭穿谎言，保留对方的反应，结尾停在冲突最强的位置。', 'value.family': '亲情冲突：突出家人之间的误解、对峙和情绪转折。',
-        'form.ready': '确认后将锁定素材、保存位置和方向；需要更换请新建会话。', 'form.done': '继续聊修改要求，每一版都会保留。',
-        'config.title': '素材与方向配置', 'config.lock': '确认并锁定配置', 'config.locked': '配置已锁定', 'config.noDirection': '未填写方向', 'editor.open': '打开剪映', 'editor.opening': '正在打开…', 'error.editor': '{detail}',
+        'form.ready': '锁定后不能更改素材、字幕目录、保存位置或方向；需要更改请新建会话。', 'form.done': '继续聊修改要求，每一版都会保留。',
+        'config.title': '素材与方向配置', 'config.lock': '锁定配置', 'config.locked': '配置已锁定', 'config.noDirection': '未填写方向', 'editor.open': '打开剪映', 'editor.opening': '正在打开…', 'error.editor': '{detail}',
         generate: '生成初版', 'generate.running': '正在切片…', 'generate.more': '按方向再剪一版', 'chat.edit': '对话剪辑', 'chat.continue': '继续对话修改', 'chat.running': '正在回复…', 'badge.chatting': '对话中',
-        'badge.setup': '待配置', 'badge.ready': '可以开始', 'badge.running': '执行中', 'badge.done': '可继续修改', 'badge.error': '未完成', 'badge.waiting': '等待确认',
-        'preview.title': '成片预览', 'preview.empty': '成片会出现在这里', 'preview.help': '选好素材和方向后，确认并锁定配置。',
+        'badge.setup': '待配置', 'badge.ready': '可以开始', 'badge.running': '执行中', 'badge.done': '可继续修改', 'badge.error': '未完成', 'badge.waiting': '需要回复',
+        'preview.title': '成片预览', 'preview.empty': '成片会出现在这里', 'preview.help': '选好素材和方向，锁定配置后即可生成。',
         'preview.loading': '正在加载视频预览…', 'preview.failed': '预览暂不可用，可直接打开成片。', 'preview.large': '视频超过内嵌预览大小限制，请直接打开成片。', 'preview.retry': '重新加载预览',
         'result.title': '当前剪辑', 'result.previous': '上次成功的成片', 'result.episode': '第 {episode} 集', 'result.duration': '{n} 秒', 'result.range': '原片 {start}–{end}', 'result.versions': '切换剪辑版本', 'result.version': 'V{version} · {n}秒',
         'result.video': 'MP4 成片', 'result.draft': '剪映草稿', 'result.pending': '完成后生成', 'result.open': '打开成片', 'result.reveal': '查看文件', 'result.draftOpen': '打开草稿目录',
         'result.draftHint': '剪映在启动时扫描草稿箱。新草稿生成后，请重启剪映再打开。',
         'progress.title': '正在制作这条切片', 'progress.help': '进度来自实际剪辑流程，可以切换任务或展开对话查看详情。',
-        'progress.queued': '等待剪辑助手启动', 'progress.survey': '正在读取素材与剧本', 'progress.pick': '正在选段', 'progress.asr': '正在语音识别台词', 'progress.pick-subtitles': '正在核对识别台词', 'progress.frames': '正在核对首尾帧', 'progress.draft': '正在生成剪映草稿', 'progress.render': '正在渲染成片',
+        'progress.queued': '等待剪辑助手启动', 'progress.survey': '正在读取素材与剧本', 'progress.pick': '正在选段', 'progress.locate': '正在定位台词', 'progress.draft': '正在生成剪映草稿', 'progress.render': '正在渲染成片',
         'step.survey': '读取素材', 'step.pick': '选段定位', 'step.draft': '生成草稿', 'step.render': '渲染成片',
         'progress.stopped': '任务已停止', 'progress.stoppedHelp': '本次没有收到完成结果。可展开对话查看原因，或重新开始。', 'progress.failed': '这次切片未完成',
-        'progress.refreshError': '进度暂时无法刷新，请稍后重试或查看对话。', 'progress.pending': '剪辑助手需要你确认，请展开对话处理。',
-        'chat.open': '展开对话', 'chat.close': '收起对话', 'chat.title': '剪辑助手', 'chat.help': '说说想法，或直接说“保留前25秒、音乐减半”', 'chat.details': '查看执行详情',
+        'progress.refreshError': '进度暂时无法刷新，请稍后重试或查看对话。', 'progress.pending': '剪辑助手需要你的回复，请展开对话查看。',
+        'chat.open': '展开对话', 'chat.close': '收起对话', 'chat.title': '剪辑助手', 'chat.help': '例如：“让反转更早出现，保留结尾的完整对白。”BGM 固定为 −5 dB。', 'chat.details': '查看执行详情',
         choose: '选择', change: '更换', cancel: '取消', confirm: '知道了', notice: '请检查任务信息', retry: '重试',
         'status.loading': '读取中', 'status.saved': '已保存', 'status.saving': '保存中…', 'status.dirty': '待保存', 'status.error': '保存失败', loading: '正在读取切片任务…',
         'validation.paths': '请先选择剧本、短剧目录和保存目录，并填写切片方向。', 'validation.docx': '剧本必须是 .docx 文件。',
         'error.open': '读取任务失败：{detail}', 'error.save': '设置保存失败：{detail}', 'error.prompt': '启动失败：{detail}', 'error.session': '任务操作失败：{detail}', 'error.pick': '选择失败：{detail}', 'error.output': '无法打开文件：{detail}',
         'error.hostPath': '无法获取本机路径，请使用桌面版或目录浏览器。', 'error.response': '服务返回了无效数据', 'error.command': '操作失败', 'error.unknown': '未知错误，请重试',
         pickerTitle: '选择{field}', pickerHelp: '浏览本机文件，不会上传。', address: '目录路径', go: '前往', parent: '上一级', roots: '常用目录', entries: '目录内容', browsing: '正在读取目录…', empty: '这里没有可选择的项目', truncated: '仅显示前 200 项，请输入更具体的目录。', selectFolder: '选择当前目录', selectFile: '选择此 DOCX', folder: '文件夹', docx: 'DOCX 文件', 'error.browse': '读取目录失败：{detail}',
-        prompt: '请按这些设置调用 duanju_slice_cut，生成当前会话的一个新版本：\n```json\n{parameters}\n```\n保留已有版本，不额外生成多条候选。完成后简短说明集号、时间码、草稿与成片位置；之后我会在本会话继续对话修改。',
+        'environment.check': '正在读取运行环境状态…', 'environment.title': '首次运行配置', 'environment.button': '配置运行环境', 'environment.prepare': '正在打开配置对话…',
+        'environment.help': '助手会在对话中检查 Python、卡点依赖、FFmpeg 和 FFprobe；缺少时才从 GitHub 下载。',
+        'environment.chat': '运行环境配置', 'environment.working': '正在配置，详情见下方对话。', 'environment.pending': '请在下方对话确认或回复后继续。',
+        'environment.waiting': '请在对话中查看检查结果；如未完成，可重新发送请求。', 'environment.retry': '重新发送配置请求', 'environment.recheck': '重新检查状态',
+        'environment.done': '运行环境已就绪。请新建会话开始剪辑。', 'environment.error': '环境配置操作失败：{detail}',
+        prompt: '请按这些设置调用 duanju_slice_cut，生成当前会话的一个新版本：\n```json\n{parameters}\n```\n保留已有版本，只制作一条，不生成 Word。完成后简短说明集号、时间码、plan.json、草稿与成片位置。',
       },
       en: {
         'task.current': 'Current conversation', 'task.close': 'Collapse conversation list', 'sessions.list': 'Conversations', title: 'Slice studio', sessions: 'Editing conversations', 'sessions.new': 'New conversation', 'sessions.empty': 'No conversations yet', 'sessions.rename': 'Rename', 'sessions.remove': 'Remove from list', 'sessions.removeAccept': 'Remove', 'sessions.removeConfirm': 'Remove this task from the list? Its conversation, video and draft will be kept.', 'sessions.noResult': 'Needs setup', 'sessions.done': 'Episode {episode} · {start}–{end}',
         'ago.now': 'now', 'ago.minute': '{n}m', 'ago.hour': '{n}h', 'ago.day': '{n}d',
-        scriptPath: 'Script DOCX', dramaDir: 'Drama folder', exportDir: 'Export folder', direction: 'Slice direction', 'empty.scriptPath': 'Choose a script', 'empty.dramaDir': 'Choose the drama folder', 'empty.exportDir': 'Choose where to save the video', 'help.scriptPath': 'Pick from the script, locate lines by speech recognition', 'help.dramaDir': 'One video per episode, or one folder per episode', 'help.exportDir': 'The MP4 is saved here; source footage stays intact', 'missing.scriptPath': 'Choose a script first', 'missing.dramaDir': 'Choose a drama folder', 'missing.exportDir': 'Choose an export folder', 'missing.direction': 'Describe the direction for this slice',
-        'form.title': 'Start an editing conversation', 'form.subtitle': 'Discuss an idea, generate a version, then keep refining it here.', 'form.sources': 'Sources & output', 'form.direction': 'What should this slice focus on?', 'form.directionHelp': 'Describe a conflict, character or moment. Specific details help select the scene.', 'placeholder.direction': 'For example: revenge — expose the lie in public, ending on a cliffhanger.', 'form.examples': 'Try a direction', 'example.revenge': 'Revenge', 'example.reveal': 'Expose a lie', 'example.family': 'Family conflict', 'value.revenge': 'Revenge: focus on the turn from being bullied to fighting back.', 'value.reveal': 'Expose a lie in public, include the reaction, and end at the peak of the conflict.', 'value.family': 'Family conflict: focus on misunderstandings, confrontations and emotional turns.', 'form.ready': 'Confirmation locks these settings. Start a new conversation to change them.', 'form.done': 'Keep refining in this conversation. Earlier versions are retained.',
-        generate: 'Generate first version', 'generate.running': 'Making your slice…', 'generate.more': 'Cut a new version', 'chat.edit': 'Chat to edit', 'chat.continue': 'Continue editing', 'chat.running': 'Replying…', 'badge.chatting': 'In conversation', 'badge.setup': 'Needs setup', 'badge.ready': 'Ready', 'badge.running': 'Running', 'badge.done': 'Ready to edit', 'badge.error': 'Incomplete', 'badge.waiting': 'Needs confirmation',
+        scriptPath: 'Script DOCX', dramaDir: 'Drama folder', subtitleDir: 'Subtitle folder (optional)', exportDir: 'Export folder', direction: 'Slice direction',
+        'empty.scriptPath': 'Choose a script', 'empty.dramaDir': 'Choose the drama folder', 'empty.subtitleDir': 'Choose the subtitle folder', 'empty.exportDir': 'Choose where to save the video',
+        'help.scriptPath': 'Select scenes from the script, locate the dialogue, then review frames for complete action', 'help.dramaDir': 'One video per episode, or one folder per episode', 'help.exportDir': 'The MP4 is saved here; source footage stays intact',
+        'help.subtitleDir': 'Use .srt files named by episode number first (e.g. EP01.srt). If subtitles are missing, unusable, or do not reliably match a complete line, speech recognition runs automatically for unmatched lines only. Leave empty to use speech recognition from the start. Either way, frames are checked after locating dialogue to verify the full action.', 'clear.subtitleDir': 'Clear subtitle folder', 'config.subtitles': 'Subtitles first: {name}', 'config.noSubtitles': 'Dialogue: speech recognition',
+        'missing.scriptPath': 'Choose a script first', 'missing.dramaDir': 'Choose a drama folder', 'missing.exportDir': 'Choose an export folder', 'missing.direction': 'Describe the direction for this slice',
+        'form.title': 'Start an editing conversation', 'form.subtitle': 'Choose sources and a direction, start editing, and keep refining it here.', 'form.sources': 'Sources & output', 'form.direction': 'What should this slice focus on?', 'form.directionHelp': 'Describe a conflict, character or moment. Specific details help select the scene.', 'placeholder.direction': 'For example: revenge — expose the lie in public, ending on a cliffhanger.', 'form.examples': 'Try a direction', 'example.revenge': 'Revenge', 'example.reveal': 'Expose a lie', 'example.family': 'Family conflict', 'value.revenge': 'Revenge: focus on the turn from being bullied to fighting back.', 'value.reveal': 'Expose a lie in public, include the reaction, and end at the peak of the conflict.', 'value.family': 'Family conflict: focus on misunderstandings, confrontations and emotional turns.', 'form.ready': 'Once locked, start a new conversation to change the sources, subtitle folder, export folder, or direction.', 'form.done': 'Keep refining in this conversation. Earlier versions are retained.',
+        generate: 'Generate first version', 'generate.running': 'Making your slice…', 'generate.more': 'Cut a new version', 'chat.edit': 'Chat to edit', 'chat.continue': 'Continue editing', 'chat.running': 'Replying…', 'badge.chatting': 'In conversation', 'badge.setup': 'Needs setup', 'badge.ready': 'Ready', 'badge.running': 'Running', 'badge.done': 'Ready to edit', 'badge.error': 'Incomplete', 'badge.waiting': 'Needs your reply',
         'preview.title': 'Video preview', 'preview.empty': 'Your video will appear here', 'preview.help': 'Choose sources, describe a direction, then start.', 'preview.loading': 'Loading video…', 'preview.failed': 'Preview unavailable. You can open the video directly.', 'preview.large': 'This video exceeds the inline preview limit. Open it directly.', 'preview.retry': 'Reload preview',
         'result.title': 'Current edit', 'result.previous': 'Previous successful video', 'result.episode': 'Episode {episode}', 'result.duration': '{n} seconds', 'result.range': 'Source {start}–{end}', 'result.video': 'MP4 video', 'result.draft': 'Jianying draft', 'result.pending': 'Available when complete', 'result.open': 'Open video', 'result.reveal': 'Show file', 'result.draftOpen': 'Open draft folder', 'result.draftHint': 'Restart Jianying after generation so the new draft appears in its draft library.',
-        'progress.title': 'Making your slice', 'progress.help': 'Progress follows the actual editing pipeline. Switch tasks or open chat for details.', 'progress.queued': 'Waiting for the editing agent', 'progress.survey': 'Reading footage and script', 'progress.pick': 'Selecting a scene', 'progress.asr': 'Recognizing dialogue', 'progress.pick-subtitles': 'Checking recognized dialogue', 'progress.frames': 'Checking first and last frames', 'progress.draft': 'Writing the Jianying draft', 'progress.render': 'Rendering the video', 'step.survey': 'Read sources', 'step.pick': 'Locate scene', 'step.draft': 'Write draft', 'step.render': 'Render video', 'progress.stopped': 'Task stopped', 'progress.stoppedHelp': 'No completion result was received. Open chat for details or try again.', 'progress.failed': 'This slice could not finish', 'progress.refreshError': 'Progress could not refresh. Retry shortly or check chat.', 'progress.pending': 'The editing agent needs your confirmation. Open chat to respond.',
-        'chat.open': 'Open chat', 'chat.close': 'Close chat', 'chat.title': 'Editing assistant', 'chat.help': 'Discuss an idea, or say “keep the first 25s and halve the music”', 'chat.details': 'View execution details', 'result.versions': 'Switch edit version', 'result.version': 'V{version} · {n}s',
-        'config.title': 'Sources and direction', 'config.lock': 'Confirm and lock settings', 'config.locked': 'Settings locked', 'config.noDirection': 'No direction yet', 'editor.open': 'Open Jianying', 'editor.opening': 'Opening…', 'error.editor': '{detail}',
+        'progress.title': 'Making your slice', 'progress.help': 'Progress follows the actual editing pipeline. Switch tasks or open chat for details.', 'progress.queued': 'Waiting for the editing agent', 'progress.survey': 'Reading footage and script', 'progress.pick': 'Selecting a scene', 'progress.locate': 'Locating dialogue', 'progress.draft': 'Writing the Jianying draft', 'progress.render': 'Rendering the video', 'step.survey': 'Read sources', 'step.pick': 'Locate scene', 'step.draft': 'Write draft', 'step.render': 'Render video', 'progress.stopped': 'Task stopped', 'progress.stoppedHelp': 'No completion result was received. Open chat for details or try again.', 'progress.failed': 'This slice could not finish', 'progress.refreshError': 'Progress could not refresh. Retry shortly or check chat.', 'progress.pending': 'The editing agent needs your reply. Open the chat to respond.',
+        'chat.open': 'Open chat', 'chat.close': 'Close chat', 'chat.title': 'Editing assistant', 'chat.help': 'Try “bring the reveal earlier and keep the final line intact.” Music is fixed at −5 dB.', 'chat.details': 'View execution details', 'result.versions': 'Switch edit version', 'result.version': 'V{version} · {n}s',
+        'config.title': 'Sources and direction', 'config.lock': 'Lock settings', 'config.locked': 'Settings locked', 'config.noDirection': 'No direction yet', 'editor.open': 'Open Jianying', 'editor.opening': 'Opening…', 'error.editor': '{detail}',
         choose: 'Choose', change: 'Change', cancel: 'Cancel', confirm: 'OK', notice: 'Check task information', retry: 'Retry', 'status.loading': 'Loading', 'status.saved': 'Saved', 'status.saving': 'Saving…', 'status.dirty': 'Unsaved', 'status.error': 'Save failed', loading: 'Loading slice tasks…',
         'validation.paths': 'Choose a script, project folder and export folder, and enter a direction.', 'validation.docx': 'The script must be a .docx file.', 'error.open': 'Could not load task: {detail}', 'error.save': 'Could not save: {detail}', 'error.prompt': 'Could not start: {detail}', 'error.session': 'Task operation failed: {detail}', 'error.pick': 'Selection failed: {detail}', 'error.output': 'Could not open file: {detail}', 'error.hostPath': 'Local path unavailable. Use Desktop or the file browser.', 'error.response': 'Invalid service response', 'error.command': 'Operation failed', 'error.unknown': 'Unknown error. Try again.',
         pickerTitle: 'Choose {field}', pickerHelp: 'Browse local files. Nothing is uploaded.', address: 'Folder path', go: 'Go', parent: 'Up one level', roots: 'Locations', entries: 'Contents', browsing: 'Reading folder…', empty: 'No matching items', truncated: 'Showing the first 200 entries. Enter a more specific path.', selectFolder: 'Choose this folder', selectFile: 'Choose this DOCX', folder: 'Folder', docx: 'DOCX file', 'error.browse': 'Could not read folder: {detail}',
-        prompt: 'Call duanju_slice_cut to make a new version in this conversation:\n```json\n{parameters}\n```\nKeep previous versions. Make one version, then briefly give the episode, timecode, draft and video paths. We can continue editing in this conversation.',
+        'environment.check': 'Checking runtime status…', 'environment.title': 'First-time setup', 'environment.button': 'Set up runtime', 'environment.prepare': 'Opening the setup conversation…',
+        'environment.help': 'The assistant checks Python, beat analysis dependencies, FFmpeg, and FFprobe in chat. It downloads from GitHub only if needed.',
+        'environment.chat': 'Runtime setup', 'environment.working': 'Setting up the runtime. See the conversation below.', 'environment.pending': 'Confirm or reply in the conversation to continue.',
+        'environment.waiting': 'Check the result in the conversation. If setup did not finish, send the request again.', 'environment.retry': 'Send setup request again', 'environment.recheck': 'Check status again',
+        'environment.done': 'The runtime is ready. Start a new conversation to begin editing.', 'environment.error': 'Runtime setup action failed: {detail}',
+        prompt: 'Call duanju_slice_cut to make a new version in this conversation:\n```json\n{parameters}\n```\nKeep previous versions. Make one version without a Word file, then briefly give the episode, timecode, plan.json, draft and video paths.',
       },
     };
 
@@ -74,10 +91,14 @@ window.__ModuleLoader__.load({
     function validation(value, generating = false) {
       const settings = normalize(value);
       if (settings.scriptPath && !/\.docx$/i.test(settings.scriptPath)) return 'validation.docx';
-      if (generating && (!settings.scriptPath || !settings.dramaDir || !settings.exportDir || !settings.direction)) return 'validation.paths';
+      if (generating && (requiredFields.some((key) => !settings[key]) || !settings.direction)) return 'validation.paths';
       return null;
     }
-    function changedSettings(value, patch) { return { ...value, ...patch }; }
+    function changedSettings(value, patch) {
+      const next = { ...value, ...patch };
+      if (value.dramaDir && next.dramaDir.trim() !== value.dramaDir.trim() && !Object.hasOwn(patch, 'subtitleDir')) next.subtitleDir = '';
+      return next;
+    }
     function runParameters(value) { return normalize(value); }
     const shortName = (path) => path ? path.split(/[\\/]/).filter(Boolean).pop() || path : '';
     function Icon({ name, size = 16, className }) {
@@ -189,8 +210,9 @@ window.__ModuleLoader__.load({
 .wb-file-choice[data-empty="false"]>svg{color:var(--wb-accent)}
 .wb-file-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
 .wb-file-choice[data-empty="true"] .wb-file-name{color:var(--wb-ink3)}
+.wb-file-controls{display:flex;align-items:center;gap:6px;min-width:0}
 .wb-file-action{flex:none;font-size:11px;color:var(--wb-accent)}
-.wb-field-hint{grid-column:2;margin-top:5px!important;font-size:10.5px;color:var(--wb-ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-field .wb-field-hint{grid-column:1/-1;margin-top:5px;font-size:11px;color:var(--wb-ink2)}
 .wb-direction{padding:17px 20px 18px}
 .wb-direction label{display:block;font-size:13px;font-weight:600}
 .wb-direction p{margin-top:6px;margin-bottom:12px;font-size:11.5px;color:var(--wb-ink2);line-height:1.7}
@@ -254,6 +276,18 @@ window.__ModuleLoader__.load({
 @container slice (min-width:1150px){.wb-shell[data-chat-open="true"]{display:grid;grid-template-columns:minmax(0,1fr) 420px;grid-template-rows:auto minmax(0,1fr)}.wb-shell[data-chat-open="true"]>.wb-bar{grid-column:1 / -1}.wb-shell[data-chat-open="true"]>.wb-scroll{grid-column:1;grid-row:2}.wb-shell[data-chat-open="true"]>.wb-chat-drawer{position:relative;inset:auto;grid-column:2;grid-row:2;width:auto;min-height:0;box-shadow:none}}
 .wb-loading{display:flex;flex:1;align-items:center;justify-content:center;gap:10px;padding:28px;color:var(--wb-ink3);font-size:13px}
 .wb-loading-error{flex-direction:column;color:var(--wb-error)}
+.wb-environment{flex:1;min-width:0;display:grid;place-items:center;overflow:auto;padding:28px}
+.wb-environment-start{text-align:center;max-width:380px}
+.wb-environment-start>svg{color:var(--wb-ink2);margin-bottom:12px}
+.wb-environment-start h1{font-weight:600;font-size:22px;line-height:1.4}
+.wb-environment-start p{margin:10px 0 22px;color:var(--wb-ink2)}
+.wb-environment-start .wb-alert{margin:16px 0 0;text-align:start}
+.wb-environment-chat{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;width:min(100%,860px);margin-inline:auto}
+.wb-environment-chat .wb-chat-head{flex:none;flex-wrap:wrap}
+.wb-environment-chat .wb-chat-head p,.wb-environment-check{color:var(--wb-ink2)}
+.wb-environment-start .wb-alert,.wb-environment-chat .wb-alert,.wb-environment-check.wb-loading-error{color:var(--wb-ink)}
+.wb-environment-chat .wb-alert{margin:8px 20px 0}
+.wb-environment-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 /* Native dialogs retain their own focus trap and Escape behavior. */
 .duanju-studio-dialog{width:min(680px,calc(100vw - 40px));max-height:calc(100vh - 64px);padding:24px;border:1px solid var(--wb-line,#e5e7ed);border-radius:12px;background:var(--wb-bg,var(--dsw-alias-bg-base,#fff));color:var(--wb-ink,var(--dsw-alias-label-primary,#202530));box-shadow:0 24px 80px #0003;font:13px/1.6 var(--dsw-font-family,-apple-system,"PingFang SC",sans-serif)}
 .duanju-studio-dialog::backdrop{background:#1018274d}
@@ -294,7 +328,7 @@ window.__ModuleLoader__.load({
 
 .wb-config{min-width:0}
 .wb-config-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 16px;min-height:64px;padding:12px 14px;border-radius:8px;background:var(--wb-soft)}
-.wb-config-files{display:flex;align-items:center;gap:14px;min-width:0}
+.wb-config-files{display:flex;align-items:center;flex-wrap:wrap;gap:5px 14px;min-width:0}
 .wb-config-files>span{display:flex;align-items:center;gap:5px;min-width:0;max-width:33%;font-size:11px;color:var(--wb-ink2)}
 .wb-config-files>span>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wb-config-direction{grid-column:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--wb-ink2)}
@@ -314,7 +348,7 @@ window.__ModuleLoader__.load({
 .wb-shell[data-started="true"] .wb-progress-run .wb-progress-text,.wb-shell[data-started="true"] .wb-progress-run .wb-steps,.wb-shell[data-started="true"] .wb-progress-run .wb-ghost{display:none}
 .wb-shell[data-started="true"] .wb-draft-hint{flex:none;margin-top:8px}
 @container slice (min-width:900px){.wb-shell[data-started="true"][data-chat-open="true"]{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);grid-template-rows:auto minmax(0,1fr)}.wb-shell[data-started="true"][data-chat-open="true"]>.wb-bar{grid-column:1 / -1}.wb-shell[data-started="true"][data-chat-open="true"]>.wb-scroll{grid-column:1;grid-row:2}.wb-shell[data-started="true"][data-chat-open="true"]>.wb-chat-drawer{position:relative;inset:auto;grid-column:2;grid-row:2;width:auto;min-height:0;box-shadow:none}}
-@container slice (max-width:850px){.wb-config-files{gap:8px}}
+@container slice (max-width:850px){.wb-config-files{column-gap:8px}}
 
 @media(prefers-reduced-motion:reduce){.wb-root *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 `;
@@ -379,6 +413,18 @@ window.__ModuleLoader__.load({
             if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
             return value;
           } catch { throw new Error(t('error.response')); }
+        }
+
+        function cachedSession(key) {
+          try { return localStorage.getItem(key); } catch { return null; }
+        }
+        function rememberSession(key, id) {
+          try { if (id) localStorage.setItem(key, id); else localStorage.removeItem(key); } catch { /* Browser storage only restores convenience state. */ }
+        }
+        async function runtimeReady(runtime, signal) {
+          const result = await command(runtime, { action: 'runtime-status' }, signal);
+          if (typeof result.ready !== 'boolean') throw new Error(t('error.response'));
+          return result.ready;
         }
 
         function nativeScriptPath(file, bridge = globalThis.__DSH_HOST_PATHS__) {
@@ -501,7 +547,44 @@ window.__ModuleLoader__.load({
           return renderSlot('conversation.session', { view: 'chat' });
         }
 
-        function Conversation({ useSession, useSessionStatus, renderFactorySlot, model }) {
+        function SetupConversation({ useSession, useSessionStatus, renderFactorySlot, setup }) {
+          const translate = useLocale();
+          const running = useSession((session) => session.running);
+          const pending = useSessionStatus((statuses) => statuses.get(setup.sessionId)?.pendingInteraction);
+          const heading = React.useRef(null);
+          const [checkError, setCheckError] = React.useState(null);
+          const [recheck, setRecheck] = React.useState(0);
+          const { check, complete, sending, opening, failure, resend, onNew } = setup;
+          const busy = sending || running || !!pending;
+          React.useEffect(() => { heading.current?.focus(); }, []);
+          React.useEffect(() => {
+            if (busy || complete) return;
+            const abort = new AbortController();
+            check(abort.signal).then(() => {
+              if (!abort.signal.aborted) setCheckError(null);
+            }).catch(error => {
+              if (!abort.signal.aborted) setCheckError(detail(error));
+            });
+            return () => abort.abort();
+          }, [busy, complete, check, recheck]);
+          const error = failure || (!complete && checkError && translate('environment.error', { detail: checkError }));
+          return h('section', { className: 'wb-environment-chat', 'aria-label': translate('environment.chat') },
+            h('header', { className: 'wb-chat-head' },
+              h('div', null, h('strong', { ref: heading, tabIndex: -1 }, translate('environment.chat')),
+                h('p', { role: 'status' }, translate(complete ? 'environment.done' : pending ? 'environment.pending' : busy ? 'environment.working' : 'environment.waiting'))),
+              h('div', { className: 'wb-environment-actions' },
+                !complete && h('button', { type: 'button', className: 'wb-ghost', disabled: busy, onClick: () => setRecheck(value => value + 1) }, translate('environment.recheck')),
+                h('button', { type: 'button', className: complete ? 'wb-primary' : 'wb-secondary', disabled: complete ? opening : busy, onClick: complete ? onNew : resend },
+                  h(Icon, { name: complete ? 'plus' : 'arrow', size: 15 }), translate(complete ? 'sessions.new' : 'environment.retry')))),
+            error && h('div', { className: 'wb-alert', role: 'alert' }, error),
+            h('div', { className: 'wb-chat' }, renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: EditingChat } })));
+        }
+
+        function Conversation(props) {
+          return props.setup ? h(SetupConversation, props) : h(EditingConversation, props);
+        }
+
+        function EditingConversation({ useSession, useSessionStatus, renderFactorySlot, model }) {
           const translate = useLocale();
           const running = useSession((session) => session.running);
           const pending = useSessionStatus((statuses) => statuses.get(model.sessionId)?.pendingInteraction);
@@ -513,8 +596,10 @@ window.__ModuleLoader__.load({
           const [chatVisited, setChatVisited] = React.useState(started);
           const [refreshError, setRefreshError] = React.useState(false);
           const scriptInput = React.useRef(null);
+          const subtitleButton = React.useRef(null);
           const chatButton = React.useRef(null);
           const alive = React.useRef(true);
+          const subtitleHelpId = React.useId();
           const directionId = React.useId();
           const directionHelpId = React.useId();
           const chatId = React.useId();
@@ -532,7 +617,7 @@ window.__ModuleLoader__.load({
           const stopped = !!task && !['done', 'error'].includes(task.stage) && running === false && !working && !pending;
           const failed = task?.stage === 'error';
           const locked = working || busy || picking;
-          const missing = fields.find((field) => !settings[field]) || (!settings.direction.trim() ? 'direction' : null);
+          const missing = requiredFields.find((field) => !settings[field]) || (!settings.direction.trim() ? 'direction' : null);
           const badge = pending ? 'waiting' : cutting ? 'running' : completed ? 'done' : working ? 'chatting' : failed || stopped ? 'error' : missing ? 'setup' : 'ready';
           const openChat = () => { commit(); setChatVisited(true); setChatOpen(true); };
           const closeChat = () => { setChatOpen(false); chatButton.current?.focus(); };
@@ -570,9 +655,9 @@ window.__ModuleLoader__.load({
             try { remoteValue(await remote.session.openWorkspacePath({ path, ...(action ? { action } : {}) })); }
             catch (error) { if (alive.current) reportNotice({ key: 'error.output', detail: detail(error) }); }
           }
-          const stage = ['survey', 'pick', 'draft', 'render'];
-          const stageIndex = task?.stage === 'frames' || task?.stage === 'asr' || task?.stage === 'pick-subtitles' ? 1 : stage.indexOf(task?.stage);
-          const progressKey = task?.stage === 'asr' || task?.stage === 'asr-cached' ? 'pick' : task?.stage;
+          const stage = ['survey', 'pick', 'render', 'draft'];
+          const progressKey = ['asr', 'asr-cached'].includes(task?.stage) ? 'locate' : task?.stage;
+          const stageIndex = progressKey === 'locate' ? 1 : stage.indexOf(progressKey);
           const progressText = pending ? 'progress.pending' : 'progress.' + (stageIndex < 0 ? 'queued' : progressKey);
           return h('div', { className: 'wb-shell', 'data-chat-open': chatOpen, 'data-started': started },
             h('input', { ref: scriptInput, type: 'file', accept: '.docx', hidden: true, onChange: selectScript }),
@@ -593,17 +678,29 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'wb-workspace' },
                   h('section', { className: 'wb-config', 'data-locked': configurationLocked, 'aria-label': translate('config.title') },
                     configurationLocked && h('div', { className: 'wb-config-summary' },
-                      h('span', { className: 'wb-config-files' }, fields.map(field => h('span', { key: field, title: translate(field) + '：' + settings[field] }, h(Icon, { name: field === 'scriptPath' ? 'doc' : 'folder', size: 13 }), h('span', null, shortName(settings[field]) || translate('empty.' + field))))),
+                      h('span', { className: 'wb-config-files' }, fields.map(field => {
+                        const name = shortName(settings[field]);
+                        const label = field === 'subtitleDir'
+                          ? (name ? translate('config.subtitles', { name }) : translate('config.noSubtitles'))
+                          : name || translate('empty.' + field);
+                        return h('span', { key: field, title: translate(field) + '：' + (settings[field] || label) }, h(Icon, { name: field === 'scriptPath' ? 'doc' : 'folder', size: 13 }), h('span', null, label));
+                      })),
                       h('span', { className: 'wb-config-direction', title: settings.direction }, translate('direction') + '：' + (settings.direction || translate('config.noDirection'))),
                       h('span', { className: 'wb-config-status' }, h(Icon, { name: 'lock', size: 13 }), translate('config.locked'))),
                   !configurationLocked && h('form', { className: 'wb-form', onSubmit: (event) => { event.preventDefault(); if (!locked && !missing) lockConfiguration(); } },
                     h('section', { className: 'wb-card' },
                       h('div', { className: 'wb-card-head' }, h('h3', null, translate('form.sources'))),
-                      h('div', { className: 'wb-fields' }, fields.map((field) => h('div', { key: field, className: 'wb-field' },
-                        h('span', { className: 'wb-field-label' }, translate(field)),
-                        h('button', { type: 'button', className: 'wb-file-choice', 'data-empty': !settings[field], disabled: locked, title: settings[field] || translate('help.' + field), 'aria-label': translate(field) + ' · ' + (shortName(settings[field]) || translate('choose')), onClick: () => choose(field) },
-                          h(Icon, { name: field === 'scriptPath' ? 'doc' : 'folder', size: 18 }), h('span', { className: 'wb-file-name' }, shortName(settings[field]) || translate('empty.' + field)), !locked && h('span', { className: 'wb-file-action' }, translate(settings[field] ? 'change' : 'choose'))),
-                        null)))),
+                      h('div', { className: 'wb-fields' }, fields.map((field) => {
+                        const subtitle = field === 'subtitleDir';
+                        const path = settings[field];
+                        return h('div', { key: field, className: 'wb-field' },
+                          h('span', { className: 'wb-field-label' }, translate(field)),
+                          h('div', { className: 'wb-file-controls' },
+                            h('button', { ref: subtitle ? subtitleButton : undefined, type: 'button', className: 'wb-file-choice', 'data-empty': !path, disabled: locked, title: path || translate('help.' + field), 'aria-label': translate(field) + ' · ' + (shortName(path) || translate('choose')), 'aria-describedby': subtitle ? subtitleHelpId : undefined, onClick: () => choose(field) },
+                              h(Icon, { name: field === 'scriptPath' ? 'doc' : 'folder', size: 18 }), h('span', { className: 'wb-file-name' }, shortName(path) || translate('empty.' + field)), !locked && h('span', { className: 'wb-file-action' }, translate(path ? 'change' : 'choose'))),
+                            subtitle && path && h('button', { type: 'button', className: 'wb-icon-button', disabled: locked, title: translate('clear.subtitleDir'), 'aria-label': translate('clear.subtitleDir'), onClick: () => { commit(change({ subtitleDir: '' })); subtitleButton.current?.focus(); } }, h(Icon, { name: 'close', size: 15 }))),
+                          subtitle && h('p', { id: subtitleHelpId, className: 'wb-field-hint' }, translate('help.subtitleDir')));
+                      }))),
                     h('section', { className: 'wb-card wb-direction' },
                       h('label', { htmlFor: directionId }, translate('form.direction')),
                       h('p', { id: directionHelpId }, translate('form.directionHelp')),
@@ -702,63 +799,124 @@ window.__ModuleLoader__.load({
           const [openingJianying, setOpeningJianying] = React.useState(false);
           const [busy, setBusy] = React.useState(false);
           const [retry, setRetry] = React.useState(0);
+          const [environment, setEnvironment] = React.useState('checking');
           React.useEffect(() => { if (!listOpen) listTrigger.current?.focus(); }, [listOpen, activeId]);
-          const adopt = React.useCallback(async (runtime, sessionId) => {
+          const adopt = React.useCallback(async (runtime, sessionId, editing = true) => {
             active(runtime);
-            if (runtime.reference?.sessionId === sessionId) return runtime.reference;
-            const next = sessions.retain(sessionId, { source: 'controllerOperation' });
-            runtime.owned.add(next);
-            try { await next.ready; active(runtime); }
-            catch (error) { release(runtime, next); throw error; }
-            runtime.reference = next;
-            setReference(next);
-            try { localStorage.setItem(CACHE_KEY, sessionId); } catch { /* A blocked browser cache must not block editing. */ }
-            return next;
+            if (runtime.reference?.sessionId !== sessionId) {
+              const next = sessions.retain(sessionId, { source: 'controllerOperation' });
+              runtime.owned.add(next);
+              try { await next.ready; active(runtime); }
+              catch (error) { release(runtime, next); throw error; }
+              runtime.reference = next;
+              setReference(next);
+            }
+            if (editing) rememberSession(CACHE_KEY, sessionId);
+            return runtime.reference;
           }, []);
-          const applyProject = (runtime, project) => {
+          const applyProject = React.useCallback((runtime, project) => {
             if (project.sessions.length) setItems(project.sessions);
             activeRef.current = project.sessionId; setActiveId(project.sessionId);
             settingsRef.current = project.settings; setSettings(project.settings);
             runtime.saved = JSON.stringify(project.settings); setStatus('saved'); setFailure(null);
-          };
+          }, []);
+          const enterEditor = React.useCallback(async (runtime, fresh = false) => {
+            const known = fresh ? [] : sessionList(await command(runtime, { action: 'list' }));
+            let project;
+            if (known.length) {
+              const cached = cachedSession(CACHE_KEY);
+              await adopt(runtime, (known.find(item => item.id === cached) || known[0]).id);
+              project = projectState(await command(runtime, { action: 'open' }));
+            } else {
+              const create = { action: 'create' };
+              if (!fresh && runtime.blankId === runtime.reference.sessionId) create.adopt = runtime.blankId;
+              const created = await command(runtime, create);
+              await adopt(runtime, created.sessionId);
+              project = projectState(created);
+            }
+            rememberSession(SETUP_KEY, null);
+            applyProject(runtime, project);
+            setEnvironment('editor');
+          }, [adopt, applyProject]);
           React.useEffect(() => {
             const runtime = { abort: new AbortController(), owned: new Set(), reference: null, saveTask: null, saved: '' };
             runtimeRef.current = runtime;
             setReference(null); setItems([]); setActiveId(null); activeRef.current = null;
-            setStatus('loading'); setFailure(null); setNotice(null); setSaving(false); setSending(false); setOpeningJianying(false); setBusy(false);
+            setEnvironment('checking'); setStatus('loading'); setFailure(null); setNotice(null); setSaving(false); setSending(false); setOpeningJianying(false); setBusy(false);
             (async () => {
-              let cached;
-              try { cached = localStorage.getItem(CACHE_KEY); } catch { /* Host storage remains authoritative. */ }
-              if (cached) {
-                try { await adopt(runtime, cached); }
-                catch { await adopt(runtime, await blankSession(runtime)); }
-              } else await adopt(runtime, await blankSession(runtime));
-              const known = sessionList(await command(runtime, { action: 'list' }));
-              let project;
-              if (!known.length) {
-                const created = await command(runtime, { action: 'create', adopt: runtime.reference.sessionId });
-                await adopt(runtime, created.sessionId);
-                project = projectState(created);
-              } else if (known.some((item) => item.id === runtime.reference.sessionId)) project = projectState(await command(runtime, { action: 'open' }));
-              else {
-                await adopt(runtime, known[0].id);
-                project = projectState(await command(runtime, { action: 'open' }));
+              const setup = cachedSession(SETUP_KEY);
+              for (const id of new Set([setup, cachedSession(CACHE_KEY)].filter(Boolean))) {
+                try {
+                  await adopt(runtime, id, false);
+                  if (id === setup) runtime.setupId = id;
+                  break;
+                } catch (error) {
+                  if (canceled(runtime, error)) throw error;
+                }
               }
-              applyProject(runtime, project);
+              if (!runtime.reference) {
+                runtime.blankId = await blankSession(runtime);
+                await adopt(runtime, runtime.blankId, false);
+              }
+              const ready = await runtimeReady(runtime);
+              if (ready) await enterEditor(runtime);
+              else setEnvironment(runtime.setupId ? 'setup' : 'required');
             })().catch((error) => {
-              if (!canceled(runtime, error)) { setFailure({ key: 'error.open', detail: detail(error) }); setStatus('error'); }
+              if (!canceled(runtime, error)) setFailure({ key: 'environment.error', detail: detail(error) });
             });
             return () => {
               runtime.abort.abort();
               for (const owned of [...runtime.owned]) release(runtime, owned);
               if (runtimeRef.current === runtime) runtimeRef.current = null;
             };
-          }, [adopt, retry]);
+          }, [adopt, enterEditor, retry]);
           // Release replaced bindings after React removes their editable subtree, not before.
           React.useEffect(() => {
             const runtime = runtimeRef.current;
             return () => { if (runtime && reference) release(runtime, reference); };
           }, [reference]);
+
+          const checkSetup = React.useCallback(async (signal) => {
+            const runtime = runtimeRef.current;
+            if (!runtime) return;
+            if (await runtimeReady(runtime, signal)) setEnvironment((view) => view === 'setup' ? 'complete' : view);
+          }, []);
+          async function requestSetup() {
+            const runtime = runtimeRef.current;
+            if (!runtime || runtime.requestingSetup) return;
+            runtime.requestingSetup = true;
+            setSending(true); setFailure(null);
+            try {
+              if (!runtime.setupId) {
+                const sessionId = runtime.blankId || await blankSession(runtime);
+                await adopt(runtime, sessionId, false);
+                runtime.blankId = null;
+                runtime.setupId = sessionId;
+                rememberSession(SETUP_KEY, sessionId);
+              }
+              setEnvironment('setup');
+              const result = await command(runtime, { action: 'runtime-prompt' });
+              if (!result.accepted) throw new Error(translate('error.response'));
+            } catch (error) {
+              if (!canceled(runtime, error)) setFailure({ key: 'environment.error', detail: detail(error) });
+            } finally {
+              runtime.requestingSetup = false;
+              if (!runtime.abort.signal.aborted) setSending(false);
+            }
+          }
+          async function startAfterSetup() {
+            const runtime = runtimeRef.current;
+            if (!runtime || runtime.openingEditor) return;
+            runtime.openingEditor = true;
+            setBusy(true); setFailure(null);
+            setListOpen(false);
+            try { await enterEditor(runtime, true); }
+            catch (error) { if (!canceled(runtime, error)) setFailure({ key: 'error.session', detail: detail(error) }); }
+            finally {
+              runtime.openingEditor = false;
+              if (!runtime.abort.signal.aborted) setBusy(false);
+            }
+          }
 
           const change = (patch) => {
             const next = changedSettings(settingsRef.current, patch);
@@ -932,6 +1090,20 @@ window.__ModuleLoader__.load({
           const activeItem = items.find((item) => item.id === activeId);
           const sessionTitle = activeItem?.title || translate('title');
           const closeList = () => setListOpen(false);
+          if (environment !== 'editor') {
+            const message = failure && translate(failure.key, { detail: failure.detail });
+            return h('div', { className: 'wb-root' }, h('style', null, css),
+              (environment === 'setup' || environment === 'complete') && reference ? h(SessionProvider, { key: reference.sessionId, session: reference }, renderSlot(CONVERSATION, {
+                setup: { sessionId: reference.sessionId, check: checkSetup, complete: environment === 'complete', sending, opening: busy, failure: message, resend: requestSetup, onNew: startAfterSetup },
+              })) : environment === 'required' ? h('main', { className: 'wb-environment' },
+                h('div', { className: 'wb-environment-start' }, h(FilmIcon, { size: 36 }), h('h1', null, translate('environment.title')), h('p', null, translate('environment.help')),
+                  h('button', { type: 'button', className: 'wb-primary', disabled: sending, onClick: requestSetup }, translate('environment.button')),
+                  sending && h('p', { role: 'status' }, translate('environment.prepare')),
+                  message && h('div', { className: 'wb-alert', role: 'alert' }, message))) :
+                h('div', { className: failure ? 'wb-loading wb-environment-check wb-loading-error' : 'wb-loading wb-environment-check', role: failure ? 'alert' : 'status' },
+                  h('span', null, message || translate('environment.check')),
+                  failure && h('button', { type: 'button', className: 'wb-ghost', onClick: () => setRetry(value => value + 1) }, translate('retry'))));
+          }
           return h('div', { className: 'wb-root' }, h('style', null, css),
             listOpen && h(React.Fragment, null,
               h('button', { type: 'button', className: 'wb-sessions-scrim', 'aria-label': translate('task.close'), tabIndex: -1, onClick: closeList }),
