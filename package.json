@@ -20,6 +20,7 @@
     "client.js",
     "lib/{studio,report,drama-source,script,docx,zip,asr,locate,websocket}.js",
     "lib/promo/",
+    "skills/duanju-slice-runtime/",
     "scripts/survey.mjs",
     "advanced/**/*.py",
     "advanced/**/*.md",

@@ -1,17 +1,19 @@
 // 短剧切片工作台 · 仅宿主剪辑流程使用 Promo 高级模式。
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { editingSession, installEditingContext, normalize, perform, prepareCutSettings, recordProgress, recordResult, rememberAdvanced, sendWorkbenchPrompt } from './lib/studio.js'
 import { formatSurvey, survey } from './lib/report.js'
 import { advanced, ADVANCED_DESCRIPTION, ADVANCED_PARAMETERS, prepareAdvanced } from './lib/promo/advanced.js'
 import { findFfprobe } from './lib/promo/media.js'
-import { configuredRuntime, configureRuntime, runtimeOptions } from './lib/promo/runtime-setup.js'
+import { configuredRuntime, runtimeOptions } from './lib/promo/runtime-setup.js'
+import { consumeRuntimeReceipt, createRuntimeRequest, discardRuntimeRequest } from './lib/promo/runtime-request.js'
 
 const PLUGIN_VERSION = '0.3.0'
 export const version = PLUGIN_VERSION
-export const inject = ['tools', 'agents', 'sessions']
+export const inject = ['tools', 'agents', 'sessions', 'skills']
 
 /** 工具输出必须是可无损提交给宿主的 JSON。 */
 export function jsonSafe(value) {
@@ -46,11 +48,8 @@ const ADVANCED_ACTIONS = ADV.action.enum.filter(action => action !== 'prepare')
 // The previous Word-pending status still means an existing MP4 can be recovered without re-rendering.
 const PENDING_VIDEO = ['video_complete_word_pending', 'video_complete_draft_pending']
 const WIP = { locate: 'asr', select_music: 'pick', beats: 'pick', mute: 'pick', save_plan: 'pick', sync: 'pick', validate: 'pick', render: 'render', export: 'draft' }
-const SETUP_PROMPT = [
-  '请为切片工作台配置本机运行环境。请直接调用 duanju_slice_setup_runtime，不要用 Git 或自行执行安装命令。',
-  '该工具会检查 Python 及卡点依赖（含 librosa）、FFmpeg 和 FFprobe。缺少 Python 环境时从官方 NuGet 下载 CPython，再用 pip 从清华 PyPI 镜像安装依赖；缺少媒体工具或默认曲库时从 GitHub 的 yanghangju/runtime 下载。下载前检测代理，验证后保存可用路径。',
-  '配置工具总超时为 10 分钟。只在工具返回 ready:true 时告知配置成功。本对话只做环境配置；失败请说明具体原因，不要继续剪辑或宣称成功。',
-].join('\n')
+const RUNTIME_SKILL = 'duanju-slice-runtime'
+const RUNTIME_SKILL_DIR = new URL(`./skills/${RUNTIME_SKILL}/`, import.meta.url)
 
 export function apply(ctx, config = {}) {
   const baseOptions = { ...config, jianying: { ...config.jianying, draftRoot: config.jianying?.draftRoot || config.draftRoot || undefined } }
@@ -134,23 +133,13 @@ export function apply(ctx, config = {}) {
 
   return ctx.effect(() => {
     const registered = [installEditingContext(ctx)]
-    registered.push(ctx.tools.register({
-      name: 'duanju_slice_setup_runtime', description: '仅在用户点击切片工作台「配置运行环境」或「重新配置环境」后，在收到请求的配置对话调用。总超时 10 分钟。复用合格的本机环境；缺失时自动检测代理，从 NuGet 安装 Python，并从清华 PyPI 镜像安装依赖，从 GitHub 的 yanghangju/runtime 下载缺少的 FFmpeg/FFprobe 和默认曲库。验证后保存路径，不执行剪辑。',
-      parameters: { type: 'object', properties: {}, additionalProperties: false }, output: output('环境检查结果及下一步'),
-      execute: (_args, exec) => {
-        const session = exec?.agent?.session
-        const request = setupRequests.get(session)
-        const messageId = request?.messageId
-        const start = messageId && ctx.get('agents')?.turnBoundaryOf(session).openTurnStartSeq
-        // A queued click is not permission for an unrelated or later turn to install software.
-        assert(Number.isSafeInteger(start) && session.snapshotEvents(start).some(({ type, data }) =>
-          type === 'user/message' && data.id === messageId && data.source.kind === 'plugin:duanju-slice'), '请先在切片工作台点击「配置运行环境」')
-        request.messageId = null
-        return configureRuntime(baseOptions, exec.signal).then(result => {
-          request.ready = result.ready === true
-          return result
-        })
-      },
+    registered.push(ctx.skills.register({
+      name: RUNTIME_SKILL,
+      description: '在切片工作台发来环境配置请求时，检查、补齐并验证 Python、FFmpeg、FFprobe 和默认曲库。',
+      source: 'runtime',
+      content: readFileSync(new URL('SKILL.md', RUNTIME_SKILL_DIR), 'utf8'),
+      resourceBase: { kind: 'directory', path: fileURLToPath(RUNTIME_SKILL_DIR) },
+      invocation: { modelInvocable: true, userInvocable: false },
     }))
     registered.push(ctx.tools.register({
       name: 'duanju_slice_survey', description: '只读勘察短剧素材、时长、音轨与剧本分集配对。',
@@ -218,17 +207,19 @@ export function apply(ctx, config = {}) {
           let result
           if (args?.action === 'runtime-status') {
             const request = args.setup === true && setupRequests.get(exec.agent?.session)
-            result = { ready: (!request || request.ready) && !!configuredRuntime() }
+            const ready = !!configuredRuntime()
+            if (ready && request && !request.ready && await consumeRuntimeReceipt(request.id)) request.ready = true
+            result = { ready: ready && (!request || request.ready) }
           } else if (args?.action === 'runtime-prompt') {
             const session = exec.agent?.session
             assert(session, '环境配置需要一条可用对话')
-            invocation.signal?.throwIfAborted()
-            const request = { messageId: randomUUID(), ready: false }
+            const request = { id: await createRuntimeRequest(baseOptions, invocation.signal), ready: false }
             setupRequests.set(session, request)
             const next = args.reconfigure === true ? '回到「切片工作台」继续原来的剪辑会话。' : '回到「切片工作台」点击「新建会话」开始剪辑。'
-            try { await sendWorkbenchPrompt(ctx, exec, `${SETUP_PROMPT}\n配置成功后，请我${next}`, request.messageId) }
+            const prompt = `请加载 ${RUNTIME_SKILL} Skill，按它的步骤配置切片工作台运行环境。\n配置请求 ID：${request.id}\n配置成功后，请我${next}`
+            try { await sendWorkbenchPrompt(ctx, exec, prompt, request.id) }
             catch (error) {
-              request.messageId = null
+              await discardRuntimeRequest(request.id).catch(() => {})
               throw error
             }
             result = { accepted: true }

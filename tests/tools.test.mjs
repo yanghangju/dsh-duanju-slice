@@ -7,7 +7,7 @@ import vm from 'node:vm'
 import { readFile } from 'node:fs/promises'
 import { cleanup, hasFfmpeg, makeVideo, tempDir } from './support.mjs'
 
-async function loadPlugin(overrides = {}) {
+async function loadPlugin(overrides = {}, config = { ffmpegPath: '' }) {
   const url = new URL('../index.js', import.meta.url)
   const context = vm.createContext({ console, Buffer, process, URL, fetch, setTimeout, clearTimeout, AbortController, crypto: globalThis.crypto })
   const source = new vm.SourceTextModule(await readFile(url, 'utf8'), { context, initializeImportMeta: (meta) => { meta.url = url.href } })
@@ -19,21 +19,26 @@ async function loadPlugin(overrides = {}) {
   })
   await source.evaluate()
   const tools = new Map()
-  const commands = []
+  const commands = [], skills = []
   const ctx = {
     effect: (callback) => callback(),
     on: () => () => {},
-    get: (key) => key === 'commands' ? { register: (spec) => { commands.push(spec); return () => {} } }
-      : key === 'agents' ? { turnBoundaryOf: session => ({ openTurnStartSeq: session.openTurnStartSeq }) } : null,
+    get: (key) => key === 'commands' ? { register: (spec) => { commands.push(spec); return () => {} } } : null,
     tools: { register: (spec) => { tools.set(spec.name, spec); return () => {} } },
+    skills: { register: (spec) => { skills.push(spec); return () => {} } },
   }
-  source.namespace.apply(ctx, { ffmpegPath: '' })
-  return { tools, commands, version: source.namespace.version }
+  source.namespace.apply(ctx, config)
+  return { tools, commands, skills, version: source.namespace.version }
 }
 
 test('注册面：高级剪辑与环境配置用原工作台命令，无旧 ASR 直剪入口', async () => {
-  const { tools, commands, version } = await loadPlugin()
-  assert.deepEqual([...tools.keys()].sort(), ['duanju_slice_advanced', 'duanju_slice_cut', 'duanju_slice_plan', 'duanju_slice_revise', 'duanju_slice_setup_runtime', 'duanju_slice_survey', 'duanju_slice_versions'])
+  const { tools, commands, skills, version } = await loadPlugin()
+  assert.deepEqual([...tools.keys()].sort(), ['duanju_slice_advanced', 'duanju_slice_cut', 'duanju_slice_plan', 'duanju_slice_revise', 'duanju_slice_survey', 'duanju_slice_versions'])
+  assert.equal(skills.length, 1)
+  assert.equal(skills[0].name, 'duanju-slice-runtime')
+  assert.equal(skills[0].invocation.modelInvocable, true)
+  assert.match(skills[0].content, /setup\.mjs[\s\S]*run_in_background: true/)
+  assert.match(await readFile(join(skills[0].resourceBase.path, 'setup.mjs'), 'utf8'), /configureRuntime/)
   assert.equal(commands.length, 1)
   assert.equal(commands[0].name, 'duanju-slice')
   assert.match(version, /^0\.3\./)
@@ -66,63 +71,55 @@ test('注册面：高级剪辑与环境配置用原工作台命令，无旧 ASR 
   assert.match((await staged.execute({ action: 'guide' }, {})).summary, /duanju_slice_cut/)
 })
 
-test('配置入口只发普通对话消息，一次授权仅适用于该提示所在回合', async () => {
+test('配置入口只发 Skill 请求，需有当前请求的完成回执', async () => {
   let installed = false
-  let installs = 0
-  let failSetup = false
-  const sent = [], events = []
-  const { tools, commands } = await loadPlugin({ './lib/promo/runtime-setup.js': {
-    configuredRuntime: () => installed ? {} : null,
-    runtimeOptions: config => ({ ...config, ffmpegPath: 'saved-path' }),
-    configureRuntime: async (config) => {
-      assert.equal(config.ffmpegPath, undefined, '复检不会被已保存的路径覆盖')
-      installs++
-      if (failSetup) throw new Error('配置失败')
-      installed = true; return { ready: true }
-    },
-  } })
-  const handler = commands[0].handler
+  const sent = [], receipts = new Set(), revoked = []
   const signal = new AbortController().signal
-  const session = { openTurnStartSeq: 0, snapshotEvents: start => events.slice(start) }
-  const agent = { id: 'setup', session, followup: message => { sent.push(message) } }
-  const command = async (action, options) => {
-    const reply = await handler({ rawInput: JSON.stringify({ action, ...options }), agent, signal })
+  const { commands } = await loadPlugin({
+    './lib/promo/runtime-setup.js': {
+      configuredRuntime: () => installed ? {} : null,
+      runtimeOptions: config => ({ ...config, ffmpegPath: 'saved-path' }),
+    },
+    './lib/promo/runtime-request.js': {
+      createRuntimeRequest: async (config, inputSignal) => {
+        assert.equal(config.ffmpegPath, 'config-path', '复检仍接收显式配置，而不是已保存的路径')
+        assert.equal(inputSignal, signal)
+        return `request-${sent.length + 1}`
+      },
+      consumeRuntimeReceipt: async id => receipts.delete(id),
+      discardRuntimeRequest: async id => { revoked.push(id) },
+    },
+  }, { ffmpegPath: 'config-path' })
+  const handler = commands[0].handler
+  const agent = { id: 'setup', session: {}, followup: message => { sent.push(message) } }
+  const other = { ...agent, id: 'reconfigure', session: {} }
+  const invoke = (action, options, target) => handler({ rawInput: JSON.stringify({ action, ...options }), agent: target, signal })
+  const command = async (action, options, target = agent) => {
+    const reply = await invoke(action, options, target)
     assert.equal(reply.kind, 'success', reply.text)
     return JSON.parse(reply.text)
   }
-  const tool = tools.get('duanju_slice_setup_runtime')
-  const run = () => tool.execute({}, { agent, signal })
-  assert.deepEqual(await command('runtime-status'), { ready: false })
-  assert.throws(run, /请先.*配置运行环境/)
+  const status = (target) => command('runtime-status', { setup: true }, target)
+  assert.deepEqual(await status(), { ready: false })
   assert.deepEqual(await command('runtime-prompt'), { accepted: true })
-  assert.equal(installs, 0, '点击只发普通聊天消息，不执行安装')
-  assert.equal(sent.length, 1)
   assert.equal(sent[0].role, 'user')
-  assert.match(sent[0].content[0].text, /duanju_slice_setup_runtime/)
+  assert.match(sent[0].content[0].text, /duanju-slice-runtime Skill.*\n配置请求 ID：request-1/)
   assert.match(sent[0].content[0].text, /新建会话/)
-  assert.throws(run, /请先/, '仍在排队的提示不能给当前回合授权')
-  events.push({ type: 'user/message', data: sent[0] })
-  session.openTurnStartSeq = 1
-  assert.throws(run, /请先/, '已结束回合里的配置请求不能给后来回合授权')
-  assert.deepEqual(await command('runtime-prompt', { reconfigure: true }), { accepted: true })
-  assert.match(sent[1].content[0].text, /10 分钟/)
+  assert.deepEqual(await status(), { ready: false })
+  assert.deepEqual(await command('runtime-prompt', { reconfigure: true }, other), { accepted: true })
+  assert.match(sent[1].content[0].text, /配置请求 ID：request-2/)
   assert.match(sent[1].content[0].text, /继续原来的剪辑会话/)
-  assert.doesNotMatch(sent[1].content[0].text, /新建会话/)
-  events.push({ type: 'user/message', data: sent[1] })
-  assert.throws(() => tool.execute({}, { agent: { id: 'other', session: { ...session } }, signal }), /请先/)
-  assert.deepEqual(await run(), { ready: true })
-  assert.throws(run, /请先/, '一次点击只允许调用一次')
-  assert.deepEqual(await command('runtime-status', { setup: true }), { ready: true })
-  failSetup = true
-  assert.deepEqual(await command('runtime-prompt'), { accepted: true })
+  installed = true
   assert.deepEqual(await command('runtime-status'), { ready: true })
-  assert.deepEqual(await command('runtime-status', { setup: true }), { ready: false })
-  events.push({ type: 'user/message', data: sent[2] })
-  session.openTurnStartSeq = 2
-  await assert.rejects(run(), /配置失败/)
-  assert.throws(run, /请先/)
-  assert.deepEqual(await command('runtime-status', { setup: true }), { ready: false })
-  assert.equal(installs, 2)
+  assert.deepEqual(await status(), { ready: false }, '旧环境不能冒充本次结果')
+  receipts.add('request-2')
+  assert.deepEqual(await status(), { ready: false }, '不能读取另一会话的回执')
+  assert.deepEqual(await status(other), { ready: true })
+  assert.deepEqual(await status(other), { ready: true }, '回执消费后仍保持已完成')
+  assert.equal(receipts.size, 0)
+  const failed = { ...agent, session: {}, followup: () => { throw new Error('send failed') } }
+  assert.deepEqual({ ...await invoke('runtime-prompt', {}, failed) }, { kind: 'error', text: 'send failed' })
+  assert.deepEqual(revoked, ['request-3'])
 })
 
 test('勘察工具：真的扫短剧目录并返回清单', { skip: !hasFfmpeg }, async () => {

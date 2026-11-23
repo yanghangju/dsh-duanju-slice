@@ -24,7 +24,7 @@ test('the cut tool rejects configuration changes before selection or media write
   })
   await source.evaluate()
   const registered = new Map()
-  source.namespace.apply({ effect: callback => callback(), on: () => () => {}, get: () => null, tools: { register: spec => { registered.set(spec.name, spec); return () => {} } } })
+  source.namespace.apply({ effect: callback => callback(), on: () => () => {}, get: () => null, skills: { register: () => () => {} }, tools: { register: spec => { registered.set(spec.name, spec); return () => {} } } })
   await assert.rejects(registered.get('duanju_slice_cut').execute({ dramaDir: '/新短剧', scriptPath: '/剧本.docx', exportDir: '/成片', direction: '换方向' }, { agent: { id: 's1' } }), /配置已锁定/)
   assert.deepEqual(events, ['check', 'error'])
 })

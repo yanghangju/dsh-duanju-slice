@@ -81,33 +81,25 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   let complete = false
   let missingArchive = false
   let downloads = 0
-  let deadline, timeoutAt
-  let timeoutCalls = 0
-  context.AbortSignal = {
-    any: AbortSignal.any.bind(AbortSignal),
-    timeout(ms) {
-      assert.equal(ms, 600_000)
-      timeoutCalls++
-      deadline = new AbortController()
-      return deadline.signal
-    },
-  }
+  context.AbortSignal = { timeout() { assert.fail('配置不应设置总时限') } }
   t.after(() => { context.AbortSignal = AbortSignal })
-  function expire(phase, signal) {
-    if (phase !== timeoutAt) return
-    deadline.abort(new DOMException('fixture deadline', 'TimeoutError'))
+  let cancelAt, controller
+  function cancel(phase, { signal }) {
+    assert.equal(signal, controller?.signal)
+    if (phase !== cancelAt) return
+    controller.abort(new Error('fixture cancelled'))
     signal.throwIfAborted()
   }
   const execFile = fakeExec(async (exe, args, options) => {
     if (exe === bins.python) {
-      expire('probe', options.signal)
+      cancel('probe', options)
       return { stdout: 'slice-python-ok' }
     }
     if (exe === bins.ffmpeg) return { stdout: 'libx264 aac' }
     if (exe === bins.ffprobe) return { stdout: 'ffprobe version' }
     const revision = runtimePaths.MUSIC_REVISION
     if (basename(exe) === 'curl.exe') {
-      expire('download', options.signal)
+      cancel('download', options)
       assert.equal(args.at(-1), `https://codeload.github.com/yanghangju/runtime/tar.gz/${revision}`)
       assert.equal(options.env.HTTPS_PROXY, proxy)
       assert.equal(args[args.indexOf('--speed-time') + 1], '30')
@@ -134,11 +126,12 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   })
   assert.equal(setup.configuredRuntime(), null)
   assert.equal(setup.runtimeOptions({}).ffmpegPath, bins.ffmpeg)
-  timeoutAt = 'probe'
-  await assert.rejects(setup.configureRuntime(), /运行环境配置超时（10 分钟）/)
-  timeoutAt = 'download'
-  await assert.rejects(setup.configureRuntime({}, new AbortController().signal), /运行环境配置超时（10 分钟）/)
-  timeoutAt = undefined
+  for (cancelAt of ['probe', 'download']) {
+    controller = new AbortController()
+    await assert.rejects(setup.configureRuntime({}, controller.signal), /fixture cancelled/)
+    assert.equal(await readFile(state, 'utf8'), previous)
+  }
+  cancelAt = controller = undefined
   assert.equal(downloads, 0)
   missingArchive = true
   await assert.rejects(setup.configureRuntime(), /下载 默认曲库 失败.*未收到有效文件/)
@@ -159,5 +152,5 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   assert.equal(setup.configuredRuntime().ffmpeg, bins.ffmpeg)
   assert.equal((await setup.configureRuntime()).downloaded.length, 0)
   assert.equal(downloads, 2)
-  assert.equal(timeoutCalls, 6, 'one deadline per attempt, including cached setup and failed probes/downloads')
+  assert.equal(await readFile(state, 'utf8'), JSON.stringify(bins, null, 2))
 })
