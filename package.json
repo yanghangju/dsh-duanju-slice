@@ -1,6 +1,6 @@
 {
   "name": "dsh-duanju-slice",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "短剧切片工作台：用可选 SRT 字幕或语音定位台词，抽帧核验动作，按单曲卡点及 JSON 方案生成 MP4 和剪映草稿。",
   "keywords": [
     "dsh",
@@ -26,7 +26,7 @@
     "assets/",
     "licenses/",
     "cordis.patch.yml",
-    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render}.*",
+    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download}.*",
     "README.md"
   ],
   "dsh": {
@@ -46,7 +46,7 @@
     }
   },
   "scripts": {
-    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs",
+    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs tests/runtime-download.test.mjs",
     "survey": "node scripts/survey.mjs"
   },
   "exports": {
