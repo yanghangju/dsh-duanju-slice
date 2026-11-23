@@ -82,8 +82,8 @@ test('配置入口只发普通对话消息，一次授权仅适用于该提示�
   const signal = new AbortController().signal
   const session = { openTurnStartSeq: 0, snapshotEvents: start => events.slice(start) }
   const agent = { id: 'setup', session, followup: message => { sent.push(message) } }
-  const command = async (action) => {
-    const reply = await handler({ rawInput: JSON.stringify({ action }), agent, signal })
+  const command = async (action, options) => {
+    const reply = await handler({ rawInput: JSON.stringify({ action, ...options }), agent, signal })
     assert.equal(reply.kind, 'success', reply.text)
     return JSON.parse(reply.text)
   }
@@ -101,7 +101,10 @@ test('配置入口只发普通对话消息，一次授权仅适用于该提示�
   events.push({ type: 'user/message', data: sent[0] })
   session.openTurnStartSeq = 1
   assert.throws(run, /请先/, '已结束回合里的配置请求不能给后来回合授权')
-  assert.deepEqual(await command('runtime-prompt'), { accepted: true })
+  assert.deepEqual(await command('runtime-prompt', { reconfigure: true }), { accepted: true })
+  assert.match(sent[1].content[0].text, /10 分钟/)
+  assert.match(sent[1].content[0].text, /继续原来的剪辑会话/)
+  assert.doesNotMatch(sent[1].content[0].text, /新建会话/)
   events.push({ type: 'user/message', data: sent[1] })
   assert.throws(() => tool.execute({}, { agent: { id: 'other', session: { ...session } }, signal }), /请先/)
   assert.deepEqual(await run(), { ready: true })

@@ -49,7 +49,7 @@ const WIP = { locate: 'asr', select_music: 'pick', beats: 'pick', mute: 'pick', 
 const SETUP_PROMPT = [
   '请为切片工作台配置本机运行环境。请直接调用 duanju_slice_setup_runtime，不要用 Git 或自行执行安装命令。',
   '该工具会检查 Python 及卡点依赖（含 librosa）、FFmpeg 和 FFprobe。缺少 Python 环境时从官方 NuGet 下载 CPython，再用 pip 从清华 PyPI 镜像安装依赖；缺少媒体工具或默认曲库时从 GitHub 的 yanghangju/runtime 下载。下载前检测代理，验证后保存可用路径。',
-  '只在工具返回 ready:true 时告知配置成功，并请我回到切片工作台点击「新建会话」开始剪辑。本对话只做环境配置；失败请说明具体原因，不要继续剪辑或宣称成功。',
+  '配置工具总超时为 10 分钟。只在工具返回 ready:true 时告知配置成功。本对话只做环境配置；失败请说明具体原因，不要继续剪辑或宣称成功。',
 ].join('\n')
 
 export function apply(ctx, config = {}) {
@@ -135,7 +135,7 @@ export function apply(ctx, config = {}) {
   return ctx.effect(() => {
     const registered = [installEditingContext(ctx)]
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_setup_runtime', description: '仅在用户点击切片工作台「配置运行环境」后在该对话调用。复用合格的本机环境；缺失时自动检测代理，从 NuGet 安装 Python，并从清华 PyPI 镜像安装依赖，从 GitHub 的 yanghangju/runtime 下载缺少的 FFmpeg/FFprobe 和默认曲库。验证后保存路径，不执行剪辑。',
+      name: 'duanju_slice_setup_runtime', description: '仅在用户点击切片工作台「配置运行环境」或「重新配置环境」后，在收到请求的配置对话调用。总超时 10 分钟。复用合格的本机环境；缺失时自动检测代理，从 NuGet 安装 Python，并从清华 PyPI 镜像安装依赖，从 GitHub 的 yanghangju/runtime 下载缺少的 FFmpeg/FFprobe 和默认曲库。验证后保存路径，不执行剪辑。',
       parameters: { type: 'object', properties: {}, additionalProperties: false }, output: output('环境检查结果及下一步'),
       execute: (_args, exec) => {
         const session = exec?.agent?.session
@@ -219,7 +219,8 @@ export function apply(ctx, config = {}) {
             invocation.signal?.throwIfAborted()
             const messageId = randomUUID()
             setupRequests.set(session, messageId)
-            try { await sendWorkbenchPrompt(ctx, exec, SETUP_PROMPT, messageId) }
+            const next = args.reconfigure === true ? '回到「切片工作台」继续原来的剪辑会话。' : '回到「切片工作台」点击「新建会话」开始剪辑。'
+            try { await sendWorkbenchPrompt(ctx, exec, `${SETUP_PROMPT}\n配置成功后，请我${next}`, messageId) }
             catch (error) {
               if (setupRequests.get(session) === messageId) setupRequests.delete(session)
               throw error

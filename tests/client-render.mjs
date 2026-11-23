@@ -72,6 +72,17 @@ test('setup keeps native chat, with a new conversation action only after verific
   assert.doesNotMatch(complete, /重新发送配置请求|环境配置操作失败/)
 })
 
+test('the editor toolbar exposes reconfiguration as a separate conversation action', () => {
+  const button = /<button\b[^>]*class="wb-secondary wb-runtime-reconfigure"[^>]*>/
+  const ready = render().match(button)?.[0]
+  assert.match(ready, /aria-label="重新配置环境"/)
+  assert.match(ready, /新建独立会话.*不影响当前剪辑会话/)
+  assert.doesNotMatch(ready, /disabled=/)
+  const opening = render({ busy: true, reconfiguring: true })
+  assert.match(opening.match(button)?.[0], /disabled=/)
+  assert.match(opening, /role="status"[^>]*>.*正在打开配置对话…/)
+})
+
 test('new conversations explain subtitle priority and automatic fallback while settings are editable', () => {
   const html = render()
   assert.match(html, /<textarea[^>]*id="[^"]*"[^>]*>/)

@@ -1,6 +1,6 @@
 {
   "name": "dsh-duanju-slice",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "短剧切片工作台：用可选 SRT 字幕或语音定位台词，抽帧核验动作，按单曲卡点及 JSON 方案生成 MP4 和剪映草稿。",
   "keywords": [
     "dsh",

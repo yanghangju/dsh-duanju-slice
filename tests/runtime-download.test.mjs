@@ -80,12 +80,33 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   const env = { https_proxy: proxy }
   let complete = false
   let downloads = 0
+  let deadline, timeoutAt
+  let timeoutCalls = 0
+  context.AbortSignal = {
+    any: AbortSignal.any.bind(AbortSignal),
+    timeout(ms) {
+      assert.equal(ms, 600_000)
+      timeoutCalls++
+      deadline = new AbortController()
+      return deadline.signal
+    },
+  }
+  t.after(() => { context.AbortSignal = AbortSignal })
+  function expire(phase, signal) {
+    if (phase !== timeoutAt) return
+    deadline.abort(new DOMException('fixture deadline', 'TimeoutError'))
+    signal.throwIfAborted()
+  }
   const execFile = fakeExec(async (exe, args, options) => {
-    if (exe === bins.python) return { stdout: 'slice-python-ok' }
+    if (exe === bins.python) {
+      expire('probe', options.signal)
+      return { stdout: 'slice-python-ok' }
+    }
     if (exe === bins.ffmpeg) return { stdout: 'libx264 aac' }
     if (exe === bins.ffprobe) return { stdout: 'ffprobe version' }
     const revision = runtimePaths.MUSIC_REVISION
     if (basename(exe) === 'curl.exe') {
+      expire('download', options.signal)
       assert.equal(args.at(-1), `https://codeload.github.com/yanghangju/runtime/tar.gz/${revision}`)
       assert.equal(options.env.HTTPS_PROXY, proxy)
       await writeFile(args.at(-2), 'archive fixture')
@@ -110,6 +131,14 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   })
   assert.equal(setup.configuredRuntime(), null)
   assert.equal(setup.runtimeOptions({}).ffmpegPath, bins.ffmpeg)
+  timeoutAt = 'probe'
+  await assert.rejects(setup.configureRuntime(), /运行环境配置超时（10 分钟）/)
+  timeoutAt = 'download'
+  await assert.rejects(setup.configureRuntime({}, new AbortController().signal), /运行环境配置超时（10 分钟）/)
+  timeoutAt = undefined
+  assert.equal(downloads, 0)
+  assert.equal(await readFile(state, 'utf8'), previous)
+  assert.deepEqual((await readdir(root)).sort(), ['ffmpeg.exe', 'ffprobe.exe', 'python.exe', 'runtime.json'])
   await assert.rejects(setup.configureRuntime(), /必须包含唯一支持音频/)
   assert.equal(setup.configuredRuntime(), null)
   assert.equal(await readFile(state, 'utf8'), previous)
@@ -124,4 +153,5 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   assert.equal(setup.configuredRuntime().ffmpeg, bins.ffmpeg)
   assert.equal((await setup.configureRuntime()).downloaded.length, 0)
   assert.equal(downloads, 2)
+  assert.equal(timeoutCalls, 5, 'one deadline per attempt, including cached setup and failed probes/downloads')
 })

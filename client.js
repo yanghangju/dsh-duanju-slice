@@ -49,6 +49,7 @@ window.__ModuleLoader__.load({
         'error.hostPath': '无法获取本机路径，请使用桌面版或目录浏览器。', 'error.response': '服务返回了无效数据', 'error.command': '操作失败', 'error.unknown': '未知错误，请重试',
         pickerTitle: '选择{field}', pickerHelp: '浏览本机文件，不会上传。', address: '目录路径', go: '前往', parent: '上一级', roots: '常用目录', entries: '目录内容', browsing: '正在读取目录…', empty: '这里没有可选择的项目', truncated: '仅显示前 200 项，请输入更具体的目录。', selectFolder: '选择当前目录', selectFile: '选择此 DOCX', folder: '文件夹', docx: 'DOCX 文件', 'error.browse': '读取目录失败：{detail}',
         'environment.check': '正在读取运行环境状态…', 'environment.title': '首次运行配置', 'environment.button': '配置运行环境', 'environment.prepare': '正在打开配置对话…',
+        'environment.reconfigure': '重新配置环境', 'environment.reconfigureHint': '新建独立会话来配置运行环境，不影响当前剪辑会话',
         'environment.help': '助手会在对话中检查 Python、卡点依赖、FFmpeg 和 FFprobe；缺少时自动检测代理并下载。默认曲库也在此时从 GitHub 下载并缓存。',
         'environment.chat': '运行环境配置', 'environment.working': '正在配置，详情见下方对话。', 'environment.pending': '请在下方对话确认或回复后继续。',
         'environment.waiting': '请在对话中查看检查结果；如未完成，可重新发送请求。', 'environment.retry': '重新发送配置请求', 'environment.recheck': '重新检查状态',
@@ -74,6 +75,7 @@ window.__ModuleLoader__.load({
         'validation.paths': 'Choose a script, project folder and export folder, and enter a direction.', 'validation.docx': 'The script must be a .docx file.', 'error.open': 'Could not load task: {detail}', 'error.save': 'Could not save: {detail}', 'error.prompt': 'Could not start: {detail}', 'error.session': 'Task operation failed: {detail}', 'error.pick': 'Selection failed: {detail}', 'error.output': 'Could not open file: {detail}', 'error.hostPath': 'Local path unavailable. Use Desktop or the file browser.', 'error.response': 'Invalid service response', 'error.command': 'Operation failed', 'error.unknown': 'Unknown error. Try again.',
         pickerTitle: 'Choose {field}', pickerHelp: 'Browse local files. Nothing is uploaded.', address: 'Folder path', go: 'Go', parent: 'Up one level', roots: 'Locations', entries: 'Contents', browsing: 'Reading folder…', empty: 'No matching items', truncated: 'Showing the first 200 entries. Enter a more specific path.', selectFolder: 'Choose this folder', selectFile: 'Choose this DOCX', folder: 'Folder', docx: 'DOCX file', 'error.browse': 'Could not read folder: {detail}',
         'environment.check': 'Checking runtime status…', 'environment.title': 'First-time setup', 'environment.button': 'Set up runtime', 'environment.prepare': 'Opening the setup conversation…',
+        'environment.reconfigure': 'Reconfigure runtime', 'environment.reconfigureHint': 'Set up the runtime in a new conversation without changing the current editing conversation',
         'environment.help': 'The assistant checks Python, beat analysis dependencies, FFmpeg, and FFprobe in chat. It checks for a proxy before downloading missing tools. The default music library is downloaded from GitHub and cached locally.',
         'environment.chat': 'Runtime setup', 'environment.working': 'Setting up the runtime. See the conversation below.', 'environment.pending': 'Confirm or reply in the conversation to continue.',
         'environment.waiting': 'Check the result in the conversation. If setup did not finish, send the request again.', 'environment.retry': 'Send setup request again', 'environment.recheck': 'Check status again',
@@ -112,7 +114,7 @@ window.__ModuleLoader__.load({
         edit: 'M4 20l4-1 12-12-3-3L5 16zM14 7l3 3', lock: 'M5 10h14v11H5zM8 10V7a4 4 0 018 0v3', film: 'M3 4h18v16H3zM7 4v16M17 4v16M3 9h4M17 9h4M3 15h4M17 15h4',
         info: 'M12 8h.01M12 11v6M22 12a10 10 0 11-20 0 10 10 0 0120 0',
         alert: 'M12 8v5M12 16h.01M10.2 4.2L2.5 17.5A1.7 1.7 0 004 20h16a1.7 1.7 0 001.5-2.5L13.8 4.2a2.1 2.1 0 00-3.6 0',
-        spinner: 'M21 12a9 9 0 11-9-9', dot: 'M12 11h.01',
+        spinner: 'M21 12a9 9 0 11-9-9', dot: 'M12 11h.01', refresh: 'M20 10a8 8 0 10-1 7M20 4v6h-6',
       };
       return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true, className }, h('path', { d: paths[name] || paths.info }));
     }
@@ -317,7 +319,7 @@ window.__ModuleLoader__.load({
 .wb-current-session{min-width:0;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:16px;border-left:1px solid var(--wb-line);font-size:12px;color:var(--wb-ink2)}
 .wb-list-toggle[aria-expanded="true"]{color:var(--wb-ink);background:var(--wb-soft)}
 .wb-nav-new{border-color:color-mix(in srgb,var(--wb-accent) 18%,var(--wb-bg));background:color-mix(in srgb,var(--wb-accent) 6%,var(--wb-bg));color:var(--wb-accent)!important}
-@container slice (max-width:850px){.wb-bar-left{gap:12px}.wb-current-session{max-width:170px;padding-left:10px}.wb-bar-right{gap:6px}}
+@container slice (max-width:850px){.wb-bar-left{gap:12px}.wb-current-session{max-width:170px;padding-left:10px}.wb-bar-right{gap:6px}.wb-runtime-reconfigure span{display:none}}
 @container slice (max-width:620px){.wb-bar-left{gap:8px}.wb-brand .wb-title{display:none}.wb-current-session{max-width:150px}.wb-nav-new span,.wb-chat-toggle span,.wb-editor-open span{display:none}}
 
 @keyframes wb-spin{to{transform:rotate(360deg)}}
@@ -354,7 +356,7 @@ window.__ModuleLoader__.load({
 `;
 
     return {
-      inject: ['slots', 'locale', 'sessions', 'uiWorkspace', 'fileUpload', 'remote', 'remote.session', 'remote.commands', 'remote.workspaceFiles'],
+      inject: ['slots', 'locale', 'sessions', 'uiWorkspace', 'layout', 'fileUpload', 'remote', 'remote.session', 'remote.commands', 'remote.workspaceFiles'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, dictionaries));
         const t = ctx.locale.bind(NS);
@@ -402,9 +404,9 @@ window.__ModuleLoader__.load({
           if (validation(settings)) throw new Error(t('error.response'));
           return { settings, sessionId: value.sessionId };
         }
-        async function command(runtime, request, signal = runtime.abort.signal, files = []) {
+        async function command(runtime, request, signal = runtime.abort.signal, files = [], sessionId = runtime.reference.sessionId) {
           active(runtime);
-          const execution = remoteValue(await remote.commands.execute(runtime.reference.sessionId, '/duanju-slice ' + JSON.stringify(request), files, signal));
+          const execution = remoteValue(await remote.commands.execute(sessionId, '/duanju-slice ' + JSON.stringify(request), files, signal));
           active(runtime);
           if (execution?.result?.kind === 'error') throw new Error(execution.result.text || t('error.command'));
           if (execution?.result?.kind !== 'success') throw new Error(t('error.response'));
@@ -604,7 +606,7 @@ window.__ModuleLoader__.load({
           const directionHelpId = React.useId();
           const chatId = React.useId();
           React.useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-          const { settings, failure, saving, status, sending, busy, change, commit, lockConfiguration, generate, selectVersion, openJianying, openingJianying, browse, reportNotice, item = {}, sessionId, sessionTitle, onNew, refresh } = model;
+          const { settings, failure, saving, status, sending, busy, change, commit, lockConfiguration, generate, selectVersion, openJianying, openingJianying, browse, reportNotice, item = {}, sessionId, sessionTitle, onNew, reconfigure, reconfiguring, refresh } = model;
           const task = item.task;
           const result = item.lastResult;
           React.useEffect(() => {
@@ -664,9 +666,10 @@ window.__ModuleLoader__.load({
             h('header', { className: 'wb-bar', 'data-window-drag': true },
               h('div', { className: 'wb-bar-left' }, model.navigation, h('div', { className: 'wb-brand' }, h(FilmIcon, { size: 21 }), h('h1', { className: 'wb-title' }, translate('title'))), h('span', { className: 'wb-current-session', title: sessionTitle }, sessionTitle)),
               h('div', { className: 'wb-bar-right' },
+                h('button', { type: 'button', className: 'wb-secondary wb-runtime-reconfigure', disabled: busy || sending, 'aria-label': translate('environment.reconfigure'), title: translate('environment.reconfigureHint'), onClick: reconfigure }, h(Icon, { name: reconfiguring ? 'spinner' : 'refresh', size: 15, className: reconfiguring ? 'wb-spinner' : undefined }), h('span', null, translate(reconfiguring ? 'environment.prepare' : 'environment.reconfigure'))),
                 h('button', { type: 'button', className: 'wb-secondary wb-nav-new', disabled: busy || sending, 'aria-label': translate('sessions.new'), title: translate('sessions.new'), onClick: onNew }, h(Icon, { name: 'plus', size: 15 }), h('span', null, translate('sessions.new'))),
                 h('button', { type: 'button', className: 'wb-secondary wb-editor-open', disabled: !!openingJianying, 'aria-label': translate('editor.open'), title: translate('editor.open'), onClick: openJianying }, h(Icon, { name: openingJianying ? 'spinner' : 'arrow', size: 15, className: openingJianying ? 'wb-spinner' : undefined }), h('span', null, translate(openingJianying ? 'editor.opening' : 'editor.open'))),
-                h('span', { className: 'wb-state', 'data-state': status, role: 'status', 'aria-live': 'polite' }, h(Icon, { name: status === 'saved' ? 'check' : status === 'saving' ? 'spinner' : 'dot', size: 13 }), translate('status.' + status)),
+                h('span', { className: 'wb-state', 'data-state': status, role: 'status', 'aria-live': 'polite' }, h(Icon, { name: reconfiguring || status === 'saving' ? 'spinner' : status === 'saved' ? 'check' : 'dot', size: 13 }), translate(reconfiguring ? 'environment.prepare' : 'status.' + status)),
                 h('button', { ref: chatButton, type: 'button', className: 'wb-secondary wb-chat-toggle', 'aria-label': translate(chatOpen ? 'chat.close' : 'chat.open'), 'aria-expanded': chatOpen, 'aria-controls': chatId, onClick: () => chatOpen ? closeChat() : openChat() }, h(Icon, { name: 'chat', size: 15 }), h('span', null, translate(chatOpen ? 'chat.close' : 'chat.open'))))),
             h('div', { className: 'wb-scroll' },
               h('div', { className: 'wb-content' },
@@ -796,6 +799,7 @@ window.__ModuleLoader__.load({
           const [notice, setNotice] = React.useState(null);
           const [saving, setSaving] = React.useState(false);
           const [sending, setSending] = React.useState(false);
+          const [reconfiguring, setReconfiguring] = React.useState(false);
           const [openingJianying, setOpeningJianying] = React.useState(false);
           const [busy, setBusy] = React.useState(false);
           const [retry, setRetry] = React.useState(0);
@@ -1058,6 +1062,28 @@ window.__ModuleLoader__.load({
             } catch (error) { failSession(runtime, error); }
             finally { if (!runtime.abort.signal.aborted) setBusy(false); }
           }
+          async function reconfigure() {
+            const runtime = runtimeRef.current;
+            if (!runtime || busy || sending || runtime.reconfiguring) return;
+            runtime.reconfiguring = true;
+            setBusy(true); setReconfiguring(true); setFailure(null);
+            const navigation = ctx.layout.beginNavigation();
+            try {
+              await save();
+              navigation.throwIfAborted();
+              const sessionId = await blankSession(runtime);
+              navigation.throwIfAborted();
+              if (sessionId === runtime.reference.sessionId) throw new Error(translate('error.response'));
+              const result = await command(runtime, { action: 'runtime-prompt', reconfigure: true }, undefined, [], sessionId);
+              if (!result.accepted) throw new Error(translate('error.response'));
+              if (!navigation.aborted) ctx.uiWorkspace.openSession(sessionId);
+            } catch (error) {
+              if (!navigation.aborted && !canceled(runtime, error)) setFailure({ key: 'environment.error', detail: detail(error) });
+            } finally {
+              runtime.reconfiguring = false;
+              if (!runtime.abort.signal.aborted) { setBusy(false); setReconfiguring(false); }
+            }
+          }
           async function renameSession(id, title) {
             const runtime = runtimeRef.current;
             if (!runtime) return;
@@ -1109,7 +1135,7 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'wb-sessions-scrim', 'aria-label': translate('task.close'), tabIndex: -1, onClick: closeList }),
               h(SessionList, { id: listId, items, activeId, busy: busy || sending || status === 'loading', loading: status === 'loading', onClose: closeList, onSelect: switchTo, onRename: renameSession, onRemove: removeSession })),
             h('div', { className: 'wb-main' },
-              ready ? h(SessionProvider, { key: activeId, session: reference }, renderSlot(CONVERSATION, { model: { settings, failure, saving, status, sending, busy, openingJianying, reportNotice: setNotice, change, commit, lockConfiguration, generate, selectVersion, openJianying, browse, sessionId: activeId, sessionTitle, item: activeItem, navigation: h('button', { ref: listTrigger, type: 'button', className: 'wb-secondary wb-list-toggle', 'aria-label': translate('sessions.list'), 'aria-expanded': listOpen, 'aria-controls': listId, onClick: () => setListOpen(value => !value) }, h(Icon, { name: listOpen ? 'panel' : 'panelOpen', size: 15 }), h('span', null, translate('sessions.list'))), onNew: createSession, refresh } })) :
+              ready ? h(SessionProvider, { key: activeId, session: reference }, renderSlot(CONVERSATION, { model: { settings, failure, saving, status, sending, busy, openingJianying, reportNotice: setNotice, change, commit, lockConfiguration, generate, selectVersion, openJianying, browse, sessionId: activeId, sessionTitle, item: activeItem, navigation: h('button', { ref: listTrigger, type: 'button', className: 'wb-secondary wb-list-toggle', 'aria-label': translate('sessions.list'), 'aria-expanded': listOpen, 'aria-controls': listId, onClick: () => setListOpen(value => !value) }, h(Icon, { name: listOpen ? 'panel' : 'panelOpen', size: 15 }), h('span', null, translate('sessions.list'))), onNew: createSession, reconfigure, reconfiguring, refresh } })) :
                 h('div', { className: failure ? 'wb-loading wb-loading-error' : 'wb-loading', role: failure ? 'alert' : 'status' },
                   h('span', null, failure ? translate(failure.key, { detail: failure.detail }) : translate('loading')),
                   failure && h('button', { className: 'wb-ghost', type: 'button', onClick: () => setRetry((value) => value + 1) }, translate('retry')))),

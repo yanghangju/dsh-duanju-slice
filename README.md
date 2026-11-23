@@ -2,7 +2,9 @@
 
 ## 首次运行
 
-安装后打开「切片工作台」，点击「配置运行环境」。按钮在原有对话中发送配置请求；助手检查 Python（含 `librosa==0.11.0` 和卡点依赖）、FFmpeg（含 `libx264`、AAC）和 FFprobe，能用就沿用本机环境。
+安装后打开「切片工作台」，点击「配置运行环境」。助手在专用配置会话中检查 Python（含 `librosa==0.11.0` 和卡点依赖）、FFmpeg（含 `libx264`、AAC）和 FFprobe，能用就沿用本机环境。每次环境配置的检查、下载、安装和验证合计最多 10 分钟。
+
+已有环境需要重新检查时，点击工作台右上角「重新配置环境」。工作台会新建一个独立会话并在那里发送配置请求，不会把请求发到当前剪辑会话。配置结束后可回到「切片工作台」继续剪辑。
 
 - 没有合格的 Python 时，插件从官方 NuGet 下载 CPython，再用 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple` 指定清华 PyPI 镜像安装依赖。缺少 FFmpeg 或 FFprobe 时，从 [GitHub 运行时仓库](https://github.com/yanghangju/runtime) 下载对应的固定版本文件。自动安装这些工具仅支持 **Windows x64**，不修改系统 Python 或 PATH；其他平台请先准备本机环境。
 - 默认曲库不随插件发布。首次配置（包括从旧版升级且尚无缓存时）从同一 GitHub 运行时仓库下载固定版本，验证目录汇总和音频后缓存到 `~/.dsh/plugins/dsh-duanju-slice/`。即使本机工具都可用也会补齐曲库，后续复用缓存。下载和解压使用 `curl` 和 `tar`（Windows 自带），不需要 Git。
