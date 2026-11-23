@@ -50,9 +50,9 @@ test('the workbench checks the saved runtime before opening any editing conversa
 })
 
 test('setup keeps native chat, with a new conversation action only after verification', () => {
-  const setup = (patch, pendingInteraction) => renderToStaticMarkup(React.createElement(captured.get('duanju.slice.conversation'), {
+  const setup = (patch, pendingInteraction, running = false) => renderToStaticMarkup(React.createElement(captured.get('duanju.slice.conversation'), {
     setup: { sessionId: 'setup', ...patch },
-    useSession: select => select({ running: false }),
+    useSession: select => select({ running }),
     useSessionStatus: select => select(new Map([['setup', { pendingInteraction }]])),
     renderFactorySlot: (slot, props) => {
       assert.equal(slot, 'conversation.content')
@@ -62,14 +62,18 @@ test('setup keeps native chat, with a new conversation action only after verific
   }))
   const waiting = setup({})
   assert.match(waiting, /重新检查状态/)
-  assert.match(waiting, /重新发送配置请求/)
-  assert.doesNotMatch(waiting, /新建会话|class="wb-form"/)
-  assert.match(setup({}, { key: 'confirmation' }), /请在下方对话确认或回复后继续/)
+  const action = html => html.match(/<button[^>]*class="wb-secondary"[^>]*>(?:(?!<\/button>)[\s\S])*重新配置环境<\/button>/)?.[0]
+  assert.doesNotMatch(action(waiting), /disabled=/)
+  assert.doesNotMatch(waiting, /重新发送配置请求|新建会话|class="wb-form"/)
+  assert.match(action(setup({}, undefined, true)), /disabled=/)
+  const pending = setup({}, { key: 'confirmation' })
+  assert.match(pending, /请在下方对话确认或回复后继续/)
+  assert.match(action(pending), /disabled=/)
   const complete = setup({ complete: true, failure: '任务操作失败：无法新建会话' })
   assert.match(complete, /aria-label="原生聊天输入"/)
   assert.match(complete, />新建会话<\/button>/)
   assert.match(complete, /role="alert">任务操作失败：无法新建会话/)
-  assert.doesNotMatch(complete, /重新发送配置请求|环境配置操作失败/)
+  assert.doesNotMatch(complete, /重新配置环境|环境配置操作失败/)
 })
 
 test('the editor toolbar exposes reconfiguration as a separate conversation action', () => {

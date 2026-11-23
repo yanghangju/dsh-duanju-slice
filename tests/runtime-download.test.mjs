@@ -79,6 +79,7 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   const proxy = 'http://proxy.example:8080'
   const env = { https_proxy: proxy }
   let complete = false
+  let missingArchive = false
   let downloads = 0
   let deadline, timeoutAt
   let timeoutCalls = 0
@@ -109,6 +110,8 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
       expire('download', options.signal)
       assert.equal(args.at(-1), `https://codeload.github.com/yanghangju/runtime/tar.gz/${revision}`)
       assert.equal(options.env.HTTPS_PROXY, proxy)
+      assert.equal(args[args.indexOf('--speed-time') + 1], '30')
+      if (missingArchive) return { stdout: '' }
       await writeFile(args.at(-2), 'archive fixture')
       downloads++
     } else {
@@ -137,6 +140,9 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   await assert.rejects(setup.configureRuntime({}, new AbortController().signal), /运行环境配置超时（10 分钟）/)
   timeoutAt = undefined
   assert.equal(downloads, 0)
+  missingArchive = true
+  await assert.rejects(setup.configureRuntime(), /下载 默认曲库 失败.*未收到有效文件/)
+  missingArchive = false
   assert.equal(await readFile(state, 'utf8'), previous)
   assert.deepEqual((await readdir(root)).sort(), ['ffmpeg.exe', 'ffprobe.exe', 'python.exe', 'runtime.json'])
   await assert.rejects(setup.configureRuntime(), /必须包含唯一支持音频/)
@@ -153,5 +159,5 @@ test('旧环境复用已保存工具，只下载曲库；验证失败不发布�
   assert.equal(setup.configuredRuntime().ffmpeg, bins.ffmpeg)
   assert.equal((await setup.configureRuntime()).downloaded.length, 0)
   assert.equal(downloads, 2)
-  assert.equal(timeoutCalls, 5, 'one deadline per attempt, including cached setup and failed probes/downloads')
+  assert.equal(timeoutCalls, 6, 'one deadline per attempt, including cached setup and failed probes/downloads')
 })

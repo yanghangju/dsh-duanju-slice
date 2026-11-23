@@ -52,7 +52,7 @@ window.__ModuleLoader__.load({
         'environment.reconfigure': '重新配置环境', 'environment.reconfigureHint': '新建独立会话来配置运行环境，不影响当前剪辑会话',
         'environment.help': '助手会在对话中检查 Python、卡点依赖、FFmpeg 和 FFprobe；缺少时自动检测代理并下载。默认曲库也在此时从 GitHub 下载并缓存。',
         'environment.chat': '运行环境配置', 'environment.working': '正在配置，详情见下方对话。', 'environment.pending': '请在下方对话确认或回复后继续。',
-        'environment.waiting': '请在对话中查看检查结果；如未完成，可重新发送请求。', 'environment.retry': '重新发送配置请求', 'environment.recheck': '重新检查状态',
+        'environment.waiting': '请在下方查看配置结果。「重新配置环境」会在一个新会话中发送配置请求。', 'environment.recheck': '重新检查状态',
         'environment.done': '运行环境已就绪。请新建会话开始剪辑。', 'environment.error': '环境配置操作失败：{detail}',
         prompt: '请按这些设置调用 duanju_slice_cut，生成当前会话的一个新版本：\n```json\n{parameters}\n```\n保留已有版本，只制作一条，不生成 Word。完成后简短说明集号、时间码、plan.json、草稿与成片位置。',
       },
@@ -78,7 +78,7 @@ window.__ModuleLoader__.load({
         'environment.reconfigure': 'Reconfigure runtime', 'environment.reconfigureHint': 'Set up the runtime in a new conversation without changing the current editing conversation',
         'environment.help': 'The assistant checks Python, beat analysis dependencies, FFmpeg, and FFprobe in chat. It checks for a proxy before downloading missing tools. The default music library is downloaded from GitHub and cached locally.',
         'environment.chat': 'Runtime setup', 'environment.working': 'Setting up the runtime. See the conversation below.', 'environment.pending': 'Confirm or reply in the conversation to continue.',
-        'environment.waiting': 'Check the result in the conversation. If setup did not finish, send the request again.', 'environment.retry': 'Send setup request again', 'environment.recheck': 'Check status again',
+        'environment.waiting': 'Check the setup result below. Reconfigure runtime sends the request in a new conversation.', 'environment.recheck': 'Check status again',
         'environment.done': 'The runtime is ready. Start a new conversation to begin editing.', 'environment.error': 'Runtime setup action failed: {detail}',
         prompt: 'Call duanju_slice_cut to make a new version in this conversation:\n```json\n{parameters}\n```\nKeep previous versions. Make one version without a Word file, then briefly give the episode, timecode, plan.json, draft and video paths.',
       },
@@ -423,8 +423,8 @@ window.__ModuleLoader__.load({
         function rememberSession(key, id) {
           try { if (id) localStorage.setItem(key, id); else localStorage.removeItem(key); } catch { /* Browser storage only restores convenience state. */ }
         }
-        async function runtimeReady(runtime, signal) {
-          const result = await command(runtime, { action: 'runtime-status' }, signal);
+        async function runtimeReady(runtime, signal, setup = false) {
+          const result = await command(runtime, setup ? { action: 'runtime-status', setup: true } : { action: 'runtime-status' }, signal);
           if (typeof result.ready !== 'boolean') throw new Error(t('error.response'));
           return result.ready;
         }
@@ -556,7 +556,7 @@ window.__ModuleLoader__.load({
           const heading = React.useRef(null);
           const [checkError, setCheckError] = React.useState(null);
           const [recheck, setRecheck] = React.useState(0);
-          const { check, complete, sending, opening, failure, resend, onNew } = setup;
+          const { check, complete, sending, opening, failure, onReconfigure, onNew } = setup;
           const busy = sending || running || !!pending;
           React.useEffect(() => { heading.current?.focus(); }, []);
           React.useEffect(() => {
@@ -573,11 +573,11 @@ window.__ModuleLoader__.load({
           return h('section', { className: 'wb-environment-chat', 'aria-label': translate('environment.chat') },
             h('header', { className: 'wb-chat-head' },
               h('div', null, h('strong', { ref: heading, tabIndex: -1 }, translate('environment.chat')),
-                h('p', { role: 'status' }, translate(complete ? 'environment.done' : pending ? 'environment.pending' : busy ? 'environment.working' : 'environment.waiting'))),
+                h('p', { role: 'status' }, translate(complete ? 'environment.done' : pending ? 'environment.pending' : sending ? 'environment.prepare' : running ? 'environment.working' : 'environment.waiting'))),
               h('div', { className: 'wb-environment-actions' },
                 !complete && h('button', { type: 'button', className: 'wb-ghost', disabled: busy, onClick: () => setRecheck(value => value + 1) }, translate('environment.recheck')),
-                h('button', { type: 'button', className: complete ? 'wb-primary' : 'wb-secondary', disabled: complete ? opening : busy, onClick: complete ? onNew : resend },
-                  h(Icon, { name: complete ? 'plus' : 'arrow', size: 15 }), translate(complete ? 'sessions.new' : 'environment.retry')))),
+                h('button', { type: 'button', className: complete ? 'wb-primary' : 'wb-secondary', disabled: complete ? opening : busy, onClick: complete ? onNew : onReconfigure },
+                  h(Icon, { name: complete ? 'plus' : 'refresh', size: 15 }), translate(complete ? 'sessions.new' : 'environment.reconfigure')))),
             error && h('div', { className: 'wb-alert', role: 'alert' }, error),
             h('div', { className: 'wb-chat' }, renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: EditingChat } })));
         }
@@ -838,6 +838,7 @@ window.__ModuleLoader__.load({
               await adopt(runtime, created.sessionId);
               project = projectState(created);
             }
+            runtime.setupId = null;
             rememberSession(SETUP_KEY, null);
             applyProject(runtime, project);
             setEnvironment('editor');
@@ -862,7 +863,7 @@ window.__ModuleLoader__.load({
                 runtime.blankId = await blankSession(runtime);
                 await adopt(runtime, runtime.blankId, false);
               }
-              const ready = await runtimeReady(runtime);
+              const ready = await runtimeReady(runtime, undefined, !!runtime.setupId);
               if (ready) await enterEditor(runtime);
               else setEnvironment(runtime.setupId ? 'setup' : 'required');
             })().catch((error) => {
@@ -882,17 +883,21 @@ window.__ModuleLoader__.load({
 
           const checkSetup = React.useCallback(async (signal) => {
             const runtime = runtimeRef.current;
-            if (!runtime) return;
-            if (await runtimeReady(runtime, signal)) setEnvironment((view) => view === 'setup' ? 'complete' : view);
+            const sessionId = runtime?.setupId;
+            if (!sessionId || runtime.requestingSetup) return;
+            if (await runtimeReady(runtime, signal, true) && !signal.aborted && runtime.setupId === sessionId && !runtime.requestingSetup) {
+              setEnvironment((view) => view === 'setup' ? 'complete' : view);
+            }
           }, []);
-          async function requestSetup() {
+          async function requestSetup(fresh = false) {
             const runtime = runtimeRef.current;
             if (!runtime || runtime.requestingSetup) return;
             runtime.requestingSetup = true;
             setSending(true); setFailure(null);
             try {
-              if (!runtime.setupId) {
-                const sessionId = runtime.blankId || await blankSession(runtime);
+              if (fresh || !runtime.setupId) {
+                const sessionId = (!fresh && runtime.blankId) || await blankSession(runtime);
+                if (fresh && sessionId === runtime.reference.sessionId) throw new Error(translate('error.response'));
                 await adopt(runtime, sessionId, false);
                 runtime.blankId = null;
                 runtime.setupId = sessionId;
@@ -1120,10 +1125,10 @@ window.__ModuleLoader__.load({
             const message = failure && translate(failure.key, { detail: failure.detail });
             return h('div', { className: 'wb-root' }, h('style', null, css),
               (environment === 'setup' || environment === 'complete') && reference ? h(SessionProvider, { key: reference.sessionId, session: reference }, renderSlot(CONVERSATION, {
-                setup: { sessionId: reference.sessionId, check: checkSetup, complete: environment === 'complete', sending, opening: busy, failure: message, resend: requestSetup, onNew: startAfterSetup },
+                setup: { sessionId: reference.sessionId, check: checkSetup, complete: environment === 'complete', sending, opening: busy, failure: message, onReconfigure: () => requestSetup(true), onNew: startAfterSetup },
               })) : environment === 'required' ? h('main', { className: 'wb-environment' },
                 h('div', { className: 'wb-environment-start' }, h(FilmIcon, { size: 36 }), h('h1', null, translate('environment.title')), h('p', null, translate('environment.help')),
-                  h('button', { type: 'button', className: 'wb-primary', disabled: sending, onClick: requestSetup }, translate('environment.button')),
+                  h('button', { type: 'button', className: 'wb-primary', disabled: sending, onClick: () => requestSetup() }, translate('environment.button')),
                   sending && h('p', { role: 'status' }, translate('environment.prepare')),
                   message && h('div', { className: 'wb-alert', role: 'alert' }, message))) :
                 h('div', { className: failure ? 'wb-loading wb-environment-check wb-loading-error' : 'wb-loading wb-environment-check', role: failure ? 'alert' : 'status' },

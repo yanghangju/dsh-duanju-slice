@@ -139,13 +139,17 @@ export function apply(ctx, config = {}) {
       parameters: { type: 'object', properties: {}, additionalProperties: false }, output: output('环境检查结果及下一步'),
       execute: (_args, exec) => {
         const session = exec?.agent?.session
-        const messageId = setupRequests.get(session)
+        const request = setupRequests.get(session)
+        const messageId = request?.messageId
         const start = messageId && ctx.get('agents')?.turnBoundaryOf(session).openTurnStartSeq
         // A queued click is not permission for an unrelated or later turn to install software.
         assert(Number.isSafeInteger(start) && session.snapshotEvents(start).some(({ type, data }) =>
           type === 'user/message' && data.id === messageId && data.source.kind === 'plugin:duanju-slice'), '请先在切片工作台点击「配置运行环境」')
-        setupRequests.delete(session)
-        return configureRuntime(baseOptions, exec.signal)
+        request.messageId = null
+        return configureRuntime(baseOptions, exec.signal).then(result => {
+          request.ready = result.ready === true
+          return result
+        })
       },
     }))
     registered.push(ctx.tools.register({
@@ -212,17 +216,19 @@ export function apply(ctx, config = {}) {
           const args = JSON.parse(invocation.rawInput || '{"action":"list"}')
           const exec = { agent: invocation.agent, signal: invocation.signal }
           let result
-          if (args?.action === 'runtime-status') result = { ready: !!configuredRuntime() }
-          else if (args?.action === 'runtime-prompt') {
+          if (args?.action === 'runtime-status') {
+            const request = args.setup === true && setupRequests.get(exec.agent?.session)
+            result = { ready: (!request || request.ready) && !!configuredRuntime() }
+          } else if (args?.action === 'runtime-prompt') {
             const session = exec.agent?.session
             assert(session, '环境配置需要一条可用对话')
             invocation.signal?.throwIfAborted()
-            const messageId = randomUUID()
-            setupRequests.set(session, messageId)
+            const request = { messageId: randomUUID(), ready: false }
+            setupRequests.set(session, request)
             const next = args.reconfigure === true ? '回到「切片工作台」继续原来的剪辑会话。' : '回到「切片工作台」点击「新建会话」开始剪辑。'
-            try { await sendWorkbenchPrompt(ctx, exec, `${SETUP_PROMPT}\n配置成功后，请我${next}`, messageId) }
+            try { await sendWorkbenchPrompt(ctx, exec, `${SETUP_PROMPT}\n配置成功后，请我${next}`, request.messageId) }
             catch (error) {
-              if (setupRequests.get(session) === messageId) setupRequests.delete(session)
+              request.messageId = null
               throw error
             }
             result = { accepted: true }

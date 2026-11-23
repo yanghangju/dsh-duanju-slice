@@ -69,13 +69,16 @@ test('注册面：高级剪辑与环境配置用原工作台命令，无旧 ASR 
 test('配置入口只发普通对话消息，一次授权仅适用于该提示所在回合', async () => {
   let installed = false
   let installs = 0
+  let failSetup = false
   const sent = [], events = []
   const { tools, commands } = await loadPlugin({ './lib/promo/runtime-setup.js': {
     configuredRuntime: () => installed ? {} : null,
     runtimeOptions: config => ({ ...config, ffmpegPath: 'saved-path' }),
     configureRuntime: async (config) => {
       assert.equal(config.ffmpegPath, undefined, '复检不会被已保存的路径覆盖')
-      installs++; installed = true; return { ready: true }
+      installs++
+      if (failSetup) throw new Error('配置失败')
+      installed = true; return { ready: true }
     },
   } })
   const handler = commands[0].handler
@@ -109,8 +112,17 @@ test('配置入口只发普通对话消息，一次授权仅适用于该提示�
   assert.throws(() => tool.execute({}, { agent: { id: 'other', session: { ...session } }, signal }), /请先/)
   assert.deepEqual(await run(), { ready: true })
   assert.throws(run, /请先/, '一次点击只允许调用一次')
+  assert.deepEqual(await command('runtime-status', { setup: true }), { ready: true })
+  failSetup = true
+  assert.deepEqual(await command('runtime-prompt'), { accepted: true })
   assert.deepEqual(await command('runtime-status'), { ready: true })
-  assert.equal(installs, 1)
+  assert.deepEqual(await command('runtime-status', { setup: true }), { ready: false })
+  events.push({ type: 'user/message', data: sent[2] })
+  session.openTurnStartSeq = 2
+  await assert.rejects(run(), /配置失败/)
+  assert.throws(run, /请先/)
+  assert.deepEqual(await command('runtime-status', { setup: true }), { ready: false })
+  assert.equal(installs, 2)
 })
 
 test('勘察工具：真的扫短剧目录并返回清单', { skip: !hasFfmpeg }, async () => {
