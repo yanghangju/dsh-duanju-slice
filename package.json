@@ -1,6 +1,6 @@
 {
   "name": "dsh-duanju-slice",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "短剧切片工作台：用可选 SRT 字幕或语音定位台词，抽帧核验动作，按单曲卡点及 JSON 方案生成 MP4 和剪映草稿。",
   "keywords": [
     "dsh",
@@ -23,7 +23,7 @@
     "scripts/survey.mjs",
     "advanced/**/*.py",
     "advanced/**/*.md",
-    "assets/",
+    "assets/ending/",
     "licenses/",
     "cordis.patch.yml",
     "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download}.*",

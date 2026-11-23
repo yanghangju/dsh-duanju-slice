@@ -6,6 +6,9 @@ node_modules/
 *.zip
 dist/
 
+# downloaded default music is not part of this repository
+/assets/music/
+
 # local scratch
 .tmp/
 tmp/

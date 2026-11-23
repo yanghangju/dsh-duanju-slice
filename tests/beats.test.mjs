@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
 import { analyzeMusic, arrangeMontage, FPS, pickMusicWindow, pythonPath } from '../lib/beats.js'
+import { DEFAULT_MUSIC_DIR } from '../lib/promo/runtime.js'
 import { cleanup, ffmpeg, hasFfmpeg, tempDir } from './support.mjs'
 
 const python = pythonPath()
@@ -38,10 +39,10 @@ test('固定动态规划先取大重音，再取拍点数、强度与理想时�
   await assert.rejects(arrangeMontage({ python, analysis, start, total: 3, shots: [{ available: 0.19 }, ...shots.slice(1)] }), /可用素材不足/)
 })
 
-test('从真实曲库分析并缓存 BGM，从非零源偏移命中实测拍点', { skip: !hasLibrosa }, async (t) => {
+const file = join(DEFAULT_MUSIC_DIR, 'Epic Drums Stomp Percussion (No Copyright) - MiroMaxMusic', 'Epic Drums Stomp Percussion (No Copyright) [628251].mp3')
+test('从真实曲库分析并缓存 BGM，从非零源偏移命中实测拍点', { skip: !hasLibrosa || !existsSync(file) }, async (t) => {
   const root = await tempDir('slice-beats-')
   t.after(() => cleanup(root))
-  const file = fileURLToPath(new URL('../assets/music/Epic Drums Stomp Percussion (No Copyright) - MiroMaxMusic/Epic Drums Stomp Percussion (No Copyright) [628251].mp3', import.meta.url))
   const input = { python, ffmpeg, file, cacheDir: join(root, 'cache') }
   const analysis = await analyzeMusic(input)
   assert.equal(analysis.method, 'librosa-beat-track')
@@ -55,7 +56,7 @@ test('从真实曲库分析并缓存 BGM，从非零源偏移命中实测拍点'
   const before = 5.2
   const after = 7.25
   const window = pickMusicWindow(analysis, { before, after, low: 5, high: 8, target: 6 })
-  assert.ok(window, '内置鼓点应有至少 5 秒的实测密集段')
+  assert.ok(window, '默认曲库鼓点应有至少 5 秒的实测密集段')
   const sourceStart = window.start - before
   assert.ok(sourceStart > 0)
   assert.ok(window.start >= window.section.start && window.end <= window.section.end)
