@@ -1,7 +1,7 @@
 {
   "name": "dsh-duanju-slice",
-  "version": "0.3.4",
-  "description": "短剧切片工作台：用可选 SRT 字幕或语音定位台词，抽帧核验动作，按单曲卡点及 JSON 方案生成 MP4 和剪映草稿。",
+  "version": "0.3.5",
+  "description": "短剧切片工作台：支持跨集卡点混剪与单集连续切片，交付 MP4 和剪映草稿。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -18,7 +18,8 @@
   "files": [
     "index.js",
     "client.js",
-    "lib/{studio,report,drama-source,script,docx,zip,asr,locate,websocket}.js",
+    "lib/{studio,report,drama-source,script,docx,zip,asr,asr-credentials,locate,websocket}.js",
+    "lib/{contiguous,plan,pick,model,frames,slice-draft,draft-root,render,ending,audio,revision}.js",
     "lib/promo/",
     "skills/duanju-slice-runtime/",
     "scripts/survey.mjs",
@@ -27,7 +28,7 @@
     "assets/ending/",
     "licenses/",
     "cordis.patch.yml",
-    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download}.*",
+    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download,contiguous,asr-credentials}.*",
     "README.md"
   ],
   "dsh": {
@@ -47,7 +48,7 @@
     }
   },
   "scripts": {
-    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs tests/runtime-download.test.mjs",
+    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs tests/runtime-download.test.mjs tests/contiguous.test.mjs tests/asr-credentials.test.mjs",
     "survey": "node scripts/survey.mjs"
   },
   "exports": {

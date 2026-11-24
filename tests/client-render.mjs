@@ -49,7 +49,7 @@ test('the workbench checks the saved runtime before opening any editing conversa
   assert.doesNotMatch(html, /<aside[^>]*aria-label="会话列表"|class="wb-form"/)
 })
 
-test('setup keeps native chat, with a new conversation action only after verification', () => {
+test('setup offers retry in the native chat, without a manual status check', () => {
   const setup = (patch, pendingInteraction, running = false) => renderToStaticMarkup(React.createElement(captured.get('duanju.slice.conversation'), {
     setup: { sessionId: 'setup', ...patch },
     useSession: select => select({ running }),
@@ -61,11 +61,14 @@ test('setup keeps native chat, with a new conversation action only after verific
     },
   }))
   const waiting = setup({})
-  assert.match(waiting, /重新检查状态/)
+  assert.match(waiting, /在下方回复「请继续配置运行环境」/)
+  assert.match(waiting, /aria-label="原生聊天输入"/)
   const action = html => html.match(/<button[^>]*class="wb-secondary"[^>]*>(?:(?!<\/button>)[\s\S])*重新配置环境<\/button>/)?.[0]
+  assert.match(action(waiting), /title="另开一条配置对话，保留当前记录。"/)
   assert.doesNotMatch(action(waiting), /disabled=/)
-  assert.doesNotMatch(waiting, /重新发送配置请求|新建会话|class="wb-form"/)
-  assert.match(action(setup({}, undefined, true)), /disabled=/)
+  assert.doesNotMatch(waiting, /新建会话|class="wb-form"/)
+  const running = setup({}, undefined, true)
+  assert.match(action(running), /disabled=/)
   const pending = setup({}, { key: 'confirmation' })
   assert.match(pending, /请在下方对话确认或回复后继续/)
   assert.match(action(pending), /disabled=/)
@@ -74,17 +77,38 @@ test('setup keeps native chat, with a new conversation action only after verific
   assert.match(complete, />新建会话<\/button>/)
   assert.match(complete, /role="alert">任务操作失败：无法新建会话/)
   assert.doesNotMatch(complete, /重新配置环境|环境配置操作失败/)
+  for (const html of [waiting, running, pending, complete]) assert.doesNotMatch(html, /重新检查状态/)
+  for (const html of [running, pending, complete]) assert.doesNotMatch(html, /在下方回复「请继续配置运行环境」/)
+  locale = 'en'
+  try {
+    const english = setup({})
+    assert.match(english, /reply “Please continue setup” below/)
+    assert.doesNotMatch(english, /Check status again/)
+  } finally { locale = 'zh' }
 })
 
-test('the editor toolbar exposes reconfiguration as a separate conversation action', () => {
-  const button = /<button\b[^>]*class="wb-secondary wb-runtime-reconfigure"[^>]*>/
-  const ready = render().match(button)?.[0]
-  assert.match(ready, /aria-label="重新配置环境"/)
-  assert.match(ready, /新建独立会话.*不影响当前剪辑会话/)
-  assert.doesNotMatch(ready, /disabled=/)
-  const opening = render({ busy: true, reconfiguring: true })
-  assert.match(opening.match(button)?.[0], /disabled=/)
-  assert.match(opening, /role="status"[^>]*>.*正在打开配置对话…/)
+test('after runtime setup the editor has speech settings, not a reconfiguration action', () => {
+  const html = render()
+  const button = html.match(/<button\b[^>]*class="wb-secondary wb-settings"[^>]*>/)?.[0]
+  assert.match(button, /aria-label="语音识别设置"/)
+  assert.match(button, /aria-haspopup="dialog"/)
+  assert.doesNotMatch(button, /disabled=/)
+  assert.doesNotMatch(html, /重新配置环境|wb-runtime-reconfigure/)
+})
+
+test('the mode selector defaults to montage; single-episode clips hide the subtitle input', () => {
+  const input = (html, mode) => html.match(/<input\b[^>]*type="radio"[^>]*>/g).find(tag => tag.includes(`value="${mode}"`))
+  const mix = render()
+  assert.match(input(mix, 'mix'), /checked=""/)
+  assert.doesNotMatch(input(mix, 'slice'), /checked=/)
+  const selected = { ...settings, mode: 'slice', subtitleDir: '/subtitles' }
+  const slice = render({ settings: selected })
+  assert.match(input(slice, 'slice'), /checked=""/)
+  assert.match(slice, /单集切片.*只剪一集中的连续原片/)
+  assert.doesNotMatch(slice, /字幕目录|字幕优先/)
+  const locked = render({ settings: selected, item: { configLocked: true } })
+  assert.match(locked, />单集切片<\/span>/)
+  assert.doesNotMatch(locked, /type="radio"|字幕目录|BGM 固定/)
 })
 
 test('new conversations explain subtitle priority and automatic fallback while settings are editable', () => {
@@ -108,7 +132,7 @@ test('ready conversations can lock sources and direction without a plan approval
   assert.match(lockButton, />锁定配置<\/button>/)
   assert.doesNotMatch(lockButton, /disabled=/)
   assert.match(html, /复仇<\/textarea>/)
-  assert.match(html, /锁定后不能更改素材、字幕目录、保存位置或方向；需要更改请新建会话。/)
+  assert.match(html, /锁定后不能更改模式、素材、保存位置或方向；需要更改请新建会话。/)
   assert.doesNotMatch(html, /<input\b[^>]*\btype="(?:range|number)"/)
 })
 
@@ -140,7 +164,7 @@ test('English copy explains subtitle fallback and locking without claiming the l
   const ready = { scriptPath: '/script.docx', dramaDir: '/drama', exportDir: '/output', direction: 'Revenge' }
   const editable = render({ settings: ready })
   assert.match(editable, /speech recognition runs automatically for unmatched lines only\. Leave empty to use speech recognition from the start\. Either way, frames are checked after locating dialogue to verify the full action\./)
-  assert.match(editable, /Once locked, start a new conversation to change the sources, subtitle folder, export folder, or direction\./)
+  assert.match(editable, /Once locked, start a new conversation to change the mode, sources, export folder, or direction\./)
   const item = { task: { stage: 'asr-cached' } }
   const locked = render({ settings: { ...ready, subtitleDir: '/subtitles' }, item }, true)
   const noSubtitles = render({ settings: ready, item }, true)
@@ -162,6 +186,15 @@ test('a generated conversation defaults to compact settings, video and chat', ()
   assert.match(html, /42\.7/)
   assert.ok(html.includes('aria-label="原生聊天输入"'), 'chat is a primary surface after generation')
   assert.doesNotMatch(html, /class="wb-deliverables"/)
+})
+
+test('a montage shows the full video duration and identifies the opening source range', () => {
+  const result = { id: 'v2', version: 2, episode: 5, start: 12, end: 18, duration: 44.2, episodes: [5, 8], workDir: '/tasks/2', outFile: '/output/montage.mp4' }
+  const html = render({ item: { task: { stage: 'done' }, results: [{ ...result, id: 'v1', version: 1 }, result], lastResult: result } })
+  assert.match(html, /V2 · 44\.2秒/)
+  assert.match(html, /取材 2 集/)
+  assert.match(html, /44\.2 秒/)
+  assert.match(html, /开场：第 5 集 /)
 })
 
 test('a delivered video stays complete while the agent writes its final summary', () => {

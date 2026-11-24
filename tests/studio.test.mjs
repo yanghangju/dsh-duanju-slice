@@ -29,6 +29,7 @@ test('progress and output survive reopening without losing concurrent settings',
     const exec = { agent: { id: 's1', followup: (message) => messages.push(message) } }
     const initial = await api.perform(ctx, { action: 'create' }, exec)
     assert.equal(initial.session.configLocked, false)
+    assert.equal(initial.settings.mode, 'mix')
     const requiredSettings = { scriptPath: resolve('/剧本.docx'), dramaDir: resolve('/短剧'), exportDir: resolve('/成片'), direction: '复仇' }
     const subtitleDir = join(root, 'The Deadly Wedding Ring', '字幕')
     assert.equal((await api.perform(ctx, { action: 'save', settings: requiredSettings }, exec)).settings.subtitleDir, '')
@@ -47,7 +48,7 @@ test('progress and output survive reopening without losing concurrent settings',
     assert.equal(locked.session.configLocked, true, 'An unavailable subtitle folder does not block automatic ASR fallback')
     assert.equal(locked.settings.subtitleDir, subtitleDir)
     assert.equal((await api.prepareCutSettings('s1', requiredSettings)).settings.subtitleDir, subtitleDir, 'Tool mode preserves the same subtitle preference')
-    for (const settings of [{ direction: '亲情' }, { scriptPath: resolve('/新剧本.docx') }, { dramaDir: resolve('/新短剧') }, { exportDir: resolve('/新成片') }, { subtitleDir: join(root, '其他字幕') }, { subtitleDir: '' }]) {
+    for (const settings of [{ mode: 'slice' }, { direction: '亲情' }, { scriptPath: resolve('/新剧本.docx') }, { dramaDir: resolve('/新短剧') }, { exportDir: resolve('/新成片') }, { subtitleDir: join(root, '其他字幕') }, { subtitleDir: '' }]) {
       await assert.rejects(api.perform(ctx, { action: 'save', settings }, exec), /配置已锁定/)
       await assert.rejects(api.prepareCutSettings('s1', { ...locked.settings, ...settings }), /配置已锁定/)
     }
@@ -151,12 +152,24 @@ test('progress and output survive reopening without losing concurrent settings',
     assert.equal(planOnly.task, null)
     assert.equal(planOnly.results.length, 0)
 
+    freshExec.agent.followup = (message) => messages.push(message)
+    const switched = await api.perform(ctx, { action: 'save', settings: { mode: 'slice' } }, freshExec)
+    assert.equal(switched.settings.mode, 'slice')
+    assert.equal((await api.editingSession(fresh.sessionId)).advanced, null, 'switching modes detaches the previous mix plan')
+    assert.match(await api.editingContext(fresh.sessionId), /从同一集裁一段连续原片/)
+    assert.equal((await api.perform(ctx, { action: 'generate' }, freshExec)).accepted, true)
+    const slicePrompt = messages.at(-1).content[0].text
+    assert.equal(JSON.parse(slicePrompt.split('\n')[1]).mode, 'slice')
+    assert.doesNotMatch(slicePrompt, /同一轮直接 locate/)
+    assert.equal((await api.perform(ctx, { action: 'open' }, freshExec)).settings.mode, 'slice')
+
     const file = join(root, '.dsh/plugins/dsh-duanju-slice/sessions.json')
     const legacy = JSON.parse(await readFile(file, 'utf8'))
     const legacyEntry = legacy.sessions.s1
     delete legacyEntry.results
     delete legacyEntry.configLocked
     delete legacyEntry.settings.subtitleDir
+    delete legacyEntry.settings.mode
     delete legacyEntry.lastResult.settings.subtitleDir
     legacyEntry.lastResult.docxFile = oldDocxFile
     await writeFile(file, JSON.stringify(legacy))
@@ -167,6 +180,7 @@ test('progress and output survive reopening without losing concurrent settings',
     assert.equal(migrated.session.lastResult.docxFile, oldDocxFile)
     assert.equal(migrated.session.lastResult.settings.subtitleDir, undefined, 'historical version settings remain untouched')
     assert.equal(migrated.settings.subtitleDir, '')
+    assert.equal(migrated.settings.mode, 'mix')
     assert.equal(migrated.session.configLocked, true, 'older generated conversations migrate to read-only configuration')
   } finally { await rm(root, { recursive: true, force: true }) }
 })

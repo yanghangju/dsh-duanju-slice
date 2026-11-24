@@ -1,17 +1,19 @@
-// 短剧切片工作台 · 仅宿主剪辑流程使用 Promo 高级模式。
+// 短剧切片工作台：Promo 混剪和单集连续切片。
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { editingSession, installEditingContext, normalize, perform, prepareCutSettings, recordProgress, recordResult, rememberAdvanced, sendWorkbenchPrompt } from './lib/studio.js'
+import { asrApiKeyStatus, resolveAsrApiKey, saveAsrApiKey } from './lib/asr-credentials.js'
+import { cutContiguous, reviseContiguous } from './lib/contiguous.js'
 import { formatSurvey, survey } from './lib/report.js'
 import { advanced, ADVANCED_DESCRIPTION, ADVANCED_PARAMETERS, prepareAdvanced } from './lib/promo/advanced.js'
 import { findFfprobe } from './lib/promo/media.js'
 import { configuredRuntime, runtimeOptions } from './lib/promo/runtime-setup.js'
 import { consumeRuntimeReceipt, createRuntimeRequest, discardRuntimeRequest } from './lib/promo/runtime-request.js'
 
-const PLUGIN_VERSION = '0.3.0'
+const PLUGIN_VERSION = '0.3.5'
 export const version = PLUGIN_VERSION
 export const inject = ['tools', 'agents', 'sessions', 'skills']
 
@@ -33,7 +35,7 @@ function output(description) {
 const DRAMA_DIR = { type: 'string', description: '短剧素材目录；每集可以是单个视频或按文件名顺序衔接的分集子目录' }
 const SCRIPT_PATH = { type: 'string', description: '含分集台词的原始 DOCX' }
 const ADV = ADVANCED_PARAMETERS.properties
-const CUT_PARAMETERS = {
+const MIX_PARAMETERS = {
   type: 'object', properties: {
     dramaDir: DRAMA_DIR, scriptPath: SCRIPT_PATH, subtitleDir: ADV.subtitleDir,
     direction: { type: 'string', description: '剧情方向，例如「复仇：当众揭穿谎言」' },
@@ -43,6 +45,18 @@ const CUT_PARAMETERS = {
     episode: { type: 'integer', minimum: 1, description: '可选：优先围绕这一集取材，不限制为单集' },
     replacePending: { type: 'boolean', description: '仅用户明确要求重开未完成的任务时为 true；保留已写文件' },
   }, required: ['dramaDir', 'scriptPath', 'direction', 'exportDir'], additionalProperties: false,
+}
+const CUT_PARAMETERS = {
+  ...MIX_PARAMETERS,
+  properties: {
+    ...MIX_PARAMETERS.properties,
+    mode: { type: 'string', enum: ['mix', 'slice'], description: 'mix 混剪；slice 单集连续切片。省略时沿用会话模式，无会话设置时默认混剪。' },
+    exportDir: { type: 'string', description: '成片保存目录：切片直接保存 MP4，混剪每版单独建任务目录' },
+    episode: { ...MIX_PARAMETERS.properties.episode, description: '混剪优先使用的集号；切片仅在指定 lines 或 start/end 时填写' },
+    lines: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'integer', minimum: 1 }, description: '仅切片：该集剧本台词的起、止行号（从 1 起算）' },
+    start: { type: 'number', minimum: 0, description: '仅切片：该集原片开始秒数，与 end 一起指定' },
+    end: { type: 'number', minimum: 0, description: '仅切片：该集原片结束秒数，与 start 一起指定' },
+  },
 }
 const ADVANCED_ACTIONS = ADV.action.enum.filter(action => action !== 'prepare')
 // The previous Word-pending status still means an existing MP4 can be recovered without re-rendering.
@@ -55,6 +69,9 @@ export function apply(ctx, config = {}) {
   const baseOptions = { ...config, jianying: { ...config.jianying, draftRoot: config.jianying?.draftRoot || config.draftRoot || undefined } }
   if (!baseOptions.ffmpegPath) delete baseOptions.ffmpegPath
   const options = () => runtimeOptions(baseOptions)
+  const credentials = () => ctx.get?.('credentials')
+  const getAsrApiKey = () => resolveAsrApiKey(credentials(), baseOptions)
+  const asrConfigured = () => asrApiKeyStatus(credentials(), baseOptions)
   const setupRequests = new WeakMap()
   const running = new Set()
   async function inSession(exec, fn) {
@@ -64,15 +81,28 @@ export function apply(ctx, config = {}) {
     try { return jsonSafe(await fn(id)) } finally { running.delete(id) }
   }
 
+  async function finishSlice(id, exec, entry, operation, input) {
+    const output = await operation({
+      ...input, ctx, config: { ...options(), getAsrApiKey }, signal: exec.signal,
+      version: (entry.results?.length ?? 0) + 1,
+      onProgress: stage => recordProgress(ctx, id, stage),
+    })
+    const result = await recordResult(ctx, id, output.result)
+    return { ...output, status: 'complete', result }
+  }
+
   async function start(id, args, exec, { planOnly = false, revision } = {}) {
-    assert(args.verify !== false && args.lines == null, '高级模式不支持跳过视觉核验或直接裁单集行号；请描述剧情方向')
     try {
       const session = await editingSession(id)
+      const mode = args.mode ?? session?.settings?.mode ?? 'mix'
+      assert(!planOnly || mode === 'mix', '只出方案仅用于混剪；切片请使用 duanju_slice_cut')
+      assert(mode === 'slice' || (args.verify !== false && args.lines == null && args.start == null && args.end == null), '混剪不支持跳过核验或按单集行号或时间裁切；请描述剧情方向')
       const exportDir = args.exportDir ?? (session?.settings?.exportDir || config.workDir || join(homedir(), '.dsh', 'plugins', 'dsh-duanju-slice', 'tasks'))
-      const patch = normalize({ dramaDir: args.dramaDir, scriptPath: args.scriptPath, subtitleDir: args.subtitleDir ?? '', direction: args.direction, exportDir })
+      const patch = normalize({ dramaDir: args.dramaDir, scriptPath: args.scriptPath, subtitleDir: args.subtitleDir ?? '', direction: args.direction, exportDir, mode })
       if (args.subtitleDir === undefined) delete patch.subtitleDir
       const locked = await prepareCutSettings(id, patch, !planOnly)
       const { settings, advanced: pending } = locked
+      if (mode === 'slice') return await finishSlice(id, exec, locked, cutContiguous, { args: { ...args, ...settings } })
       if (pending && pending.status !== 'complete' && !pending.planOnly && !args.replacePending) {
         assert(!planOnly, '当前会话已有正式剪辑任务；仅出方案不会替换该任务')
         const status = pending.status === 'awaiting_confirmation' ? 'editing' : pending.status
@@ -106,7 +136,8 @@ export function apply(ctx, config = {}) {
     try {
       const progress = WIP[args.action]
       if (progress && !pending.planOnly) await recordProgress(ctx, id, progress)
-      const result = await advanced(ctx, exec, { action, workDir: pending.workDir, data }, options())
+      const runtime = options()
+      const result = await advanced(ctx, exec, { action, workDir: pending.workDir, data }, action === 'locate' ? { ...runtime, getAsrApiKey } : runtime)
       if (action === 'render' && result.status === 'complete') {
         const clips = result.clips
         const opening = clips[0]
@@ -151,13 +182,13 @@ export function apply(ctx, config = {}) {
       },
     }))
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_cut', description: '立即启动或继续同一会话的剪辑；优先用分集字幕定位，字幕不可用或未匹配完整台词时自动使用现有语音识别，不停下来询问用户，只对白抽帧核验动作且已通过段不重查。保存并按 plan.json 剪辑，先交付 MP4，随后可按需导出可编辑剪映草稿，不生成 Word。',
-      parameters: CUT_PARAMETERS, output: output('高级任务、原稿索引和直接执行步骤'),
+      name: 'duanju_slice_cut', description: '按会话模式开始剪辑。切片（slice）从同一集直接裁一段原声连续片段，交付 MP4 和可用的剪映草稿。混剪（mix）优先用分集字幕定位，字幕不可用或未匹配完整台词时自动使用现有语音识别，不停下来询问用户，只对白抽帧核验动作且已通过段不重查。混剪保存并按 plan.json 剪辑，先交付 MP4，再按需导出可编辑剪映草稿；两种模式都不生成 Word。',
+      parameters: CUT_PARAMETERS, output: output('连续切片成片或混剪任务及执行步骤'),
       execute: (args, exec) => inSession(exec, id => start(id, args, exec)),
     }))
     registered.push(ctx.tools.register({
       name: 'duanju_slice_plan', description: '只规划「铺垫—快切—原声高潮—固定片尾」，提交 plan.json。不会定位、抽帧或导出成片。',
-      parameters: { ...CUT_PARAMETERS, required: ['dramaDir', 'scriptPath', 'direction'] }, output: output('方案任务和原稿索引'),
+      parameters: { ...MIX_PARAMETERS, required: ['dramaDir', 'scriptPath', 'direction'] }, output: output('混剪方案任务和原稿索引'),
       execute: (args, exec) => inSession(exec, id => start(id, args, exec, { planOnly: true })),
     }))
     registered.push(ctx.tools.register({
@@ -166,11 +197,11 @@ export function apply(ctx, config = {}) {
       execute: (args, exec) => args.action === 'guide' ? advanced(ctx, exec, args, baseOptions) : inSession(exec, id => advance(id, args, exec)),
     }))
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_revise', description: '按明确的剧情、节奏或取景直接按新 plan.json 剪辑，以当前选中版本为参考，沿用素材及字幕设置、保留旧版。不截断完整台词、不改原声或固定片尾音量，BGM 固定 −5 dB。',
+      name: 'duanju_slice_revise', description: '修订当前选中的版本，保留旧版。切片在同一集按相对该版起点的秒数重新裁切；混剪按剧情、节奏或取景重做 plan.json，不截断完整台词、不改原声或固定片尾音量，BGM 固定 −5 dB。',
       parameters: { type: 'object', properties: {
         note: { type: 'string', description: '这次修订的目标' },
-        start: { type: 'number', description: '开头期望时间，作为修订目标，不直接截成片' },
-        end: { type: 'number', description: '结尾期望时间，作为修订目标，不直接截成片' },
+        start: { type: 'number', description: '切片：相对该版起点的开始秒数，可为负；混剪：开头期望时间，只作为目标' },
+        end: { type: 'number', description: '切片：相对该版起点的结束秒数；混剪：结尾期望时间，只作为目标' },
         dialogueGain: { type: 'number', description: '高级方案须保留完整原声，只接受 1' },
         effectsGain: { type: 'number', description: '固定片尾音效须保留原音量，只接受 1' },
       }, additionalProperties: false }, output: output('新版本任务和直接执行步骤'),
@@ -178,10 +209,17 @@ export function apply(ctx, config = {}) {
         const entry = await editingSession(id)
         const current = entry?.lastResult
         assert(current, '当前会话还没有成片，请先生成初版')
-        assert(args.dialogueGain == null || args.dialogueGain === 1, '高级方案须保留完整原声，不能修改对白增益')
+        assert(args.dialogueGain == null || args.dialogueGain === 1, '须保留原声，不能修改对白增益')
         assert(args.effectsGain == null || args.effectsGain === 1, '固定片尾须保留全长和原音量，不能修改片尾增益')
-        assert(args.note?.trim() || [args.start, args.end].some(Number.isFinite), '请说明这次要调整的剧情、节奏或取景')
         const settings = { subtitleDir: '', ...(current.settings ?? entry.settings) }
+        if (settings.mode === 'slice') {
+          try { return await finishSlice(id, exec, entry, reviseContiguous, { current: { ...current, settings }, args }) }
+          catch (error) {
+            await recordProgress(ctx, id, 'error', error.message)
+            throw error
+          }
+        }
+        assert(args.note?.trim() || [args.start, args.end].some(Number.isFinite), '请说明这次要调整的剧情、节奏或取景')
         const revision = { baseVersion: current.version, basePlanFile: current.planFile, baseMontageCount: current.montageCount, note: args.note, desiredStart: args.start, desiredEnd: args.end }
         return start(id, settings, exec, { revision })
       }),
@@ -198,8 +236,20 @@ export function apply(ctx, config = {}) {
     }))
     const commands = ctx.get?.('commands')
     if (commands) registered.push(commands.register({
+      name: 'duanju-slice-store-asr-key', description: '仅供切片工作台设置弹窗使用；请勿在对话中输入密钥。', recordInput: false,
+      async handler({ rawInput, signal }) {
+        try {
+          signal?.throwIfAborted()
+          await saveAsrApiKey(credentials(), rawInput)
+          return { kind: 'success' }
+        } catch {
+          // Command results are persisted even when input is not recorded.
+          return { kind: 'error', text: '保存语音识别 API Key 失败，请检查输入或稍后重试。' }
+        }
+      },
+    }), commands.register({
       name: 'duanju-slice', description: '切片工作台：本机运行环境、会话设置和对话制作入口', recordInput: true,
-      input: { hint: 'JSON: action=runtime-status/runtime-prompt/list/create/open/save/lock/rename/remove/browse/generate/select-result/open-jianying', attachments: false },
+      input: { hint: 'JSON: action=runtime-status/runtime-prompt/asr-status/list/create/open/save/lock/rename/remove/browse/generate/select-result/open-jianying', attachments: false },
       async handler(invocation) {
         try {
           const args = JSON.parse(invocation.rawInput || '{"action":"list"}')
@@ -210,19 +260,25 @@ export function apply(ctx, config = {}) {
             const ready = !!configuredRuntime()
             if (ready && request && !request.ready && await consumeRuntimeReceipt(request.id)) request.ready = true
             result = { ready: ready && (!request || request.ready) }
+          } else if (args?.action === 'asr-status') {
+            result = { configured: await asrConfigured() }
           } else if (args?.action === 'runtime-prompt') {
             const session = exec.agent?.session
             assert(session, '环境配置需要一条可用对话')
-            const request = { id: await createRuntimeRequest(baseOptions, invocation.signal), ready: false }
-            setupRequests.set(session, request)
-            const next = args.reconfigure === true ? '回到「切片工作台」继续原来的剪辑会话。' : '回到「切片工作台」点击「新建会话」开始剪辑。'
-            const prompt = `请加载 ${RUNTIME_SKILL} Skill，按它的步骤配置切片工作台运行环境。\n配置请求 ID：${request.id}\n配置成功后，请我${next}`
-            try { await sendWorkbenchPrompt(ctx, exec, prompt, request.id) }
-            catch (error) {
-              await discardRuntimeRequest(request.id).catch(() => {})
-              throw error
+            if (!await asrConfigured()) {
+              result = { accepted: false, needsAsrKey: true }
+            } else {
+              const request = { id: await createRuntimeRequest(baseOptions, invocation.signal), ready: false }
+              setupRequests.set(session, request)
+              const prompt = `请加载 ${RUNTIME_SKILL} Skill，按它的步骤配置切片工作台运行环境。\n配置请求 ID：${request.id}\n如果我在这条对话中请你继续配置或重试，请按同一 Skill 用这个请求 ID 继续，不要让我另开对话。配置成功后，请我在切片工作台点击「新建会话」开始剪辑。`
+              try { await sendWorkbenchPrompt(ctx, exec, prompt, request.id) }
+              catch (error) {
+                if (setupRequests.get(session) === request) setupRequests.delete(session)
+                await discardRuntimeRequest(request.id).catch(() => {})
+                throw error
+              }
+              result = { accepted: true }
             }
-            result = { accepted: true }
           } else result = await perform(ctx, args, exec)
           return { kind: 'success', text: JSON.stringify(result) }
         } catch (error) { return { kind: 'error', text: error.message } }

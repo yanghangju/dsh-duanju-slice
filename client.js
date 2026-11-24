@@ -27,13 +27,17 @@ window.__ModuleLoader__.load({
         'placeholder.direction': '例如：复仇向，突出女主当众揭穿谎言的片段，结尾保留悬念。',
         'form.examples': '试试这样写', 'example.revenge': '复仇反转', 'example.reveal': '当众揭穿', 'example.family': '亲情冲突',
         'value.revenge': '复仇向：人物从被欺负到反击，突出反转与情绪爆发。', 'value.reveal': '当众揭穿谎言，保留对方的反应，结尾停在冲突最强的位置。', 'value.family': '亲情冲突：突出家人之间的误解、对峙和情绪转折。',
-        'form.ready': '锁定后不能更改素材、字幕目录、保存位置或方向；需要更改请新建会话。', 'form.done': '继续聊修改要求，每一版都会保留。',
+        'form.ready': '锁定后不能更改模式、素材、保存位置或方向；需要更改请新建会话。', 'form.done': '继续聊修改要求，每一版都会保留。',
+        'mode.label': '剪辑模式', 'mode.mix': '混剪', 'mode.slice': '单集切片',
+        'mode.mix.help': '可跨集选材，配乐卡点，保留原声高潮与固定片尾。', 'mode.slice.help': '只剪一集中的连续原片，保留原声，不加配乐或片尾。',
+        'chat.help.slice': '例如：“开头提前两秒，保留原片结尾。”也可以指定集号和原片起止时间。',
+        'progress.draft.slice': '正在准备连续片段', 'step.draft.slice': '准备片段', 'result.noDraft': '未生成剪映草稿；MP4 可直接打开。',
         'config.title': '素材与方向配置', 'config.lock': '锁定配置', 'config.locked': '配置已锁定', 'config.noDirection': '未填写方向', 'editor.open': '打开剪映', 'editor.opening': '正在打开…', 'error.editor': '{detail}',
         generate: '生成初版', 'generate.running': '正在切片…', 'generate.more': '按方向再剪一版', 'chat.edit': '对话剪辑', 'chat.continue': '继续对话修改', 'chat.running': '正在回复…', 'badge.chatting': '对话中',
         'badge.setup': '待配置', 'badge.ready': '可以开始', 'badge.running': '执行中', 'badge.done': '可继续修改', 'badge.error': '未完成', 'badge.waiting': '需要回复',
         'preview.title': '成片预览', 'preview.empty': '成片会出现在这里', 'preview.help': '选好素材和方向，锁定配置后即可生成。',
         'preview.loading': '正在加载视频预览…', 'preview.failed': '预览暂不可用，可直接打开成片。', 'preview.large': '视频超过内嵌预览大小限制，请直接打开成片。', 'preview.retry': '重新加载预览',
-        'result.title': '当前剪辑', 'result.previous': '上次成功的成片', 'result.episode': '第 {episode} 集', 'result.duration': '{n} 秒', 'result.range': '原片 {start}–{end}', 'result.versions': '切换剪辑版本', 'result.version': 'V{version} · {n}秒',
+        'result.title': '当前剪辑', 'result.previous': '上次成功的成片', 'result.episode': '第 {episode} 集', 'result.episodes': '取材 {n} 集', 'result.duration': '{n} 秒', 'result.range': '原片 {start}–{end}', 'result.opening': '开场：第 {episode} 集 {start}–{end}', 'result.versions': '切换剪辑版本', 'result.version': 'V{version} · {n}秒',
         'result.video': 'MP4 成片', 'result.draft': '剪映草稿', 'result.pending': '完成后生成', 'result.open': '打开成片', 'result.reveal': '查看文件', 'result.draftOpen': '打开草稿目录',
         'result.draftHint': '剪映在启动时扫描草稿箱。新草稿生成后，请重启剪映再打开。',
         'progress.title': '正在制作这条切片', 'progress.help': '进度来自实际剪辑流程，可以切换任务或展开对话查看详情。',
@@ -49,12 +53,17 @@ window.__ModuleLoader__.load({
         'error.hostPath': '无法获取本机路径，请使用桌面版或目录浏览器。', 'error.response': '服务返回了无效数据', 'error.command': '操作失败', 'error.unknown': '未知错误，请重试',
         pickerTitle: '选择{field}', pickerHelp: '浏览本机文件，不会上传。', address: '目录路径', go: '前往', parent: '上一级', roots: '常用目录', entries: '目录内容', browsing: '正在读取目录…', empty: '这里没有可选择的项目', truncated: '仅显示前 200 项，请输入更具体的目录。', selectFolder: '选择当前目录', selectFile: '选择此 DOCX', folder: '文件夹', docx: 'DOCX 文件', 'error.browse': '读取目录失败：{detail}',
         'environment.check': '正在读取运行环境状态…', 'environment.title': '首次运行配置', 'environment.button': '配置运行环境', 'environment.prepare': '正在打开配置对话…',
-        'environment.reconfigure': '重新配置环境', 'environment.reconfigureHint': '新建独立会话来配置运行环境，不影响当前剪辑会话',
-        'environment.help': '助手会在对话中检查 Python、卡点依赖、FFmpeg 和 FFprobe；缺少时自动检测代理并下载。默认曲库也在此时从 GitHub 下载并缓存。',
+        'environment.reconfigure': '重新配置环境', 'environment.reconfigureHelp': '另开一条配置对话，保留当前记录。',
+        'environment.help': '先检查是否已配置语音识别 API Key，再在对话中检查剪辑依赖并补齐缺少的工具与默认曲库。',
+        'asr.settings': '语音识别设置', 'asr.setup': '配置语音识别', 'asr.label': '豆包语音 API Key', 'asr.private': '密钥存入本机凭据，不会发送到剪辑对话。',
+        'asr.required': '未找到语音识别 API Key。保存后将继续配置运行环境。',
+        'asr.check': '正在检查密钥…', 'asr.configured': '已检测到密钥。填入新密钥可替换，服务会在识别时验证。', 'asr.missing': '未配置。填写 API Key 后即可使用语音识别。',
+        'asr.checkError': '暂时无法检查密钥状态。', 'asr.saveError': '保存失败，请检查 API Key 格式或稍后重试。',
+        'asr.save': '保存密钥', 'asr.continue': '保存并继续', 'asr.saving': '正在保存…', 'asr.saved': '语音识别 API Key 已保存。', 'asr.close': '关闭',
         'environment.chat': '运行环境配置', 'environment.working': '正在配置，详情见下方对话。', 'environment.pending': '请在下方对话确认或回复后继续。',
-        'environment.waiting': '请在下方查看配置结果。「重新配置环境」会在一个新会话中发送配置请求。', 'environment.recheck': '重新检查状态',
-        'environment.done': '运行环境已就绪。请新建会话开始剪辑。', 'environment.error': '环境配置操作失败：{detail}',
-        prompt: '请按这些设置调用 duanju_slice_cut，生成当前会话的一个新版本：\n```json\n{parameters}\n```\n保留已有版本，只制作一条，不生成 Word。完成后简短说明集号、时间码、plan.json、草稿与成片位置。',
+        'environment.waiting': '若配置未完成，直接在下方回复「请继续配置运行环境」，无需另开会话。',
+        'environment.done': '运行环境已就绪。请新建会话开始剪辑。', 'environment.error': '环境配置操作失败：{detail}', 'environment.statusError': '暂时无法验证配置状态：{detail}',
+        prompt: '请按这些设置调用 duanju_slice_cut，生成当前会话的一个新版本：\n```json\n{parameters}\n```\n保留已有版本，只制作一条，不生成 Word。完成后简短说明集号、时间码和交付文件位置。',
       },
       en: {
         'task.current': 'Current conversation', 'task.close': 'Collapse conversation list', 'sessions.list': 'Conversations', title: 'Slice studio', sessions: 'Editing conversations', 'sessions.new': 'New conversation', 'sessions.empty': 'No conversations yet', 'sessions.rename': 'Rename', 'sessions.remove': 'Remove from list', 'sessions.removeAccept': 'Remove', 'sessions.removeConfirm': 'Remove this task from the list? Its conversation, video and draft will be kept.', 'sessions.noResult': 'Needs setup', 'sessions.done': 'Episode {episode} · {start}–{end}',
@@ -64,10 +73,14 @@ window.__ModuleLoader__.load({
         'help.scriptPath': 'Select scenes from the script, locate the dialogue, then review frames for complete action', 'help.dramaDir': 'One video per episode, or one folder per episode', 'help.exportDir': 'The MP4 is saved here; source footage stays intact',
         'help.subtitleDir': 'Use .srt files named by episode number first (e.g. EP01.srt). If subtitles are missing, unusable, or do not reliably match a complete line, speech recognition runs automatically for unmatched lines only. Leave empty to use speech recognition from the start. Either way, frames are checked after locating dialogue to verify the full action.', 'clear.subtitleDir': 'Clear subtitle folder', 'config.subtitles': 'Subtitles first: {name}', 'config.noSubtitles': 'Dialogue: speech recognition',
         'missing.scriptPath': 'Choose a script first', 'missing.dramaDir': 'Choose a drama folder', 'missing.exportDir': 'Choose an export folder', 'missing.direction': 'Describe the direction for this slice',
-        'form.title': 'Start an editing conversation', 'form.subtitle': 'Choose sources and a direction, start editing, and keep refining it here.', 'form.sources': 'Sources & output', 'form.direction': 'What should this slice focus on?', 'form.directionHelp': 'Describe a conflict, character or moment. Specific details help select the scene.', 'placeholder.direction': 'For example: revenge — expose the lie in public, ending on a cliffhanger.', 'form.examples': 'Try a direction', 'example.revenge': 'Revenge', 'example.reveal': 'Expose a lie', 'example.family': 'Family conflict', 'value.revenge': 'Revenge: focus on the turn from being bullied to fighting back.', 'value.reveal': 'Expose a lie in public, include the reaction, and end at the peak of the conflict.', 'value.family': 'Family conflict: focus on misunderstandings, confrontations and emotional turns.', 'form.ready': 'Once locked, start a new conversation to change the sources, subtitle folder, export folder, or direction.', 'form.done': 'Keep refining in this conversation. Earlier versions are retained.',
+        'form.title': 'Start an editing conversation', 'form.subtitle': 'Choose sources and a direction, start editing, and keep refining it here.', 'form.sources': 'Sources & output', 'form.direction': 'What should this slice focus on?', 'form.directionHelp': 'Describe a conflict, character or moment. Specific details help select the scene.', 'placeholder.direction': 'For example: revenge — expose the lie in public, ending on a cliffhanger.', 'form.examples': 'Try a direction', 'example.revenge': 'Revenge', 'example.reveal': 'Expose a lie', 'example.family': 'Family conflict', 'value.revenge': 'Revenge: focus on the turn from being bullied to fighting back.', 'value.reveal': 'Expose a lie in public, include the reaction, and end at the peak of the conflict.', 'value.family': 'Family conflict: focus on misunderstandings, confrontations and emotional turns.', 'form.ready': 'Once locked, start a new conversation to change the mode, sources, export folder, or direction.', 'form.done': 'Keep refining in this conversation. Earlier versions are retained.',
+        'mode.label': 'Editing mode', 'mode.mix': 'Montage', 'mode.slice': 'Single-episode clip',
+        'mode.mix.help': 'Select across episodes, sync to music, and keep the original climax and fixed ending.', 'mode.slice.help': 'Cut one continuous excerpt from a single episode with its original audio. No added music or ending.',
+        'chat.help.slice': 'Try “start two seconds earlier, keeping the end of the clip.” You can also specify an episode and source time range.',
+        'progress.draft.slice': 'Preparing the excerpt', 'step.draft.slice': 'Prepare excerpt', 'result.noDraft': 'No Jianying draft was created. You can open the MP4 directly.',
         generate: 'Generate first version', 'generate.running': 'Making your slice…', 'generate.more': 'Cut a new version', 'chat.edit': 'Chat to edit', 'chat.continue': 'Continue editing', 'chat.running': 'Replying…', 'badge.chatting': 'In conversation', 'badge.setup': 'Needs setup', 'badge.ready': 'Ready', 'badge.running': 'Running', 'badge.done': 'Ready to edit', 'badge.error': 'Incomplete', 'badge.waiting': 'Needs your reply',
         'preview.title': 'Video preview', 'preview.empty': 'Your video will appear here', 'preview.help': 'Choose sources, describe a direction, then start.', 'preview.loading': 'Loading video…', 'preview.failed': 'Preview unavailable. You can open the video directly.', 'preview.large': 'This video exceeds the inline preview limit. Open it directly.', 'preview.retry': 'Reload preview',
-        'result.title': 'Current edit', 'result.previous': 'Previous successful video', 'result.episode': 'Episode {episode}', 'result.duration': '{n} seconds', 'result.range': 'Source {start}–{end}', 'result.video': 'MP4 video', 'result.draft': 'Jianying draft', 'result.pending': 'Available when complete', 'result.open': 'Open video', 'result.reveal': 'Show file', 'result.draftOpen': 'Open draft folder', 'result.draftHint': 'Restart Jianying after generation so the new draft appears in its draft library.',
+        'result.title': 'Current edit', 'result.previous': 'Previous successful video', 'result.episode': 'Episode {episode}', 'result.episodes': '{n} source episodes', 'result.duration': '{n} seconds', 'result.range': 'Source {start}–{end}', 'result.opening': 'Opening: episode {episode} {start}–{end}', 'result.video': 'MP4 video', 'result.draft': 'Jianying draft', 'result.pending': 'Available when complete', 'result.open': 'Open video', 'result.reveal': 'Show file', 'result.draftOpen': 'Open draft folder', 'result.draftHint': 'Restart Jianying after generation so the new draft appears in its draft library.',
         'progress.title': 'Making your slice', 'progress.help': 'Progress follows the actual editing pipeline. Switch tasks or open chat for details.', 'progress.queued': 'Waiting for the editing agent', 'progress.survey': 'Reading footage and script', 'progress.pick': 'Selecting a scene', 'progress.locate': 'Locating dialogue', 'progress.draft': 'Writing the Jianying draft', 'progress.render': 'Rendering the video', 'step.survey': 'Read sources', 'step.pick': 'Locate scene', 'step.draft': 'Write draft', 'step.render': 'Render video', 'progress.stopped': 'Task stopped', 'progress.stoppedHelp': 'No completion result was received. Open chat for details or try again.', 'progress.failed': 'This slice could not finish', 'progress.refreshError': 'Progress could not refresh. Retry shortly or check chat.', 'progress.pending': 'The editing agent needs your reply. Open the chat to respond.',
         'chat.open': 'Open chat', 'chat.close': 'Close chat', 'chat.title': 'Editing assistant', 'chat.help': 'Try “bring the reveal earlier and keep the final line intact.” Music is fixed at −5 dB.', 'chat.details': 'View execution details', 'result.versions': 'Switch edit version', 'result.version': 'V{version} · {n}s',
         'config.title': 'Sources and direction', 'config.lock': 'Lock settings', 'config.locked': 'Settings locked', 'config.noDirection': 'No direction yet', 'editor.open': 'Open Jianying', 'editor.opening': 'Opening…', 'error.editor': '{detail}',
@@ -75,12 +88,17 @@ window.__ModuleLoader__.load({
         'validation.paths': 'Choose a script, project folder and export folder, and enter a direction.', 'validation.docx': 'The script must be a .docx file.', 'error.open': 'Could not load task: {detail}', 'error.save': 'Could not save: {detail}', 'error.prompt': 'Could not start: {detail}', 'error.session': 'Task operation failed: {detail}', 'error.pick': 'Selection failed: {detail}', 'error.output': 'Could not open file: {detail}', 'error.hostPath': 'Local path unavailable. Use Desktop or the file browser.', 'error.response': 'Invalid service response', 'error.command': 'Operation failed', 'error.unknown': 'Unknown error. Try again.',
         pickerTitle: 'Choose {field}', pickerHelp: 'Browse local files. Nothing is uploaded.', address: 'Folder path', go: 'Go', parent: 'Up one level', roots: 'Locations', entries: 'Contents', browsing: 'Reading folder…', empty: 'No matching items', truncated: 'Showing the first 200 entries. Enter a more specific path.', selectFolder: 'Choose this folder', selectFile: 'Choose this DOCX', folder: 'Folder', docx: 'DOCX file', 'error.browse': 'Could not read folder: {detail}',
         'environment.check': 'Checking runtime status…', 'environment.title': 'First-time setup', 'environment.button': 'Set up runtime', 'environment.prepare': 'Opening the setup conversation…',
-        'environment.reconfigure': 'Reconfigure runtime', 'environment.reconfigureHint': 'Set up the runtime in a new conversation without changing the current editing conversation',
-        'environment.help': 'The assistant checks Python, beat analysis dependencies, FFmpeg, and FFprobe in chat. It checks for a proxy before downloading missing tools. The default music library is downloaded from GitHub and cached locally.',
+        'environment.reconfigure': 'Reconfigure runtime', 'environment.reconfigureHelp': 'Open a new setup conversation and keep this one.',
+        'environment.help': 'First, check for a speech recognition API key. The assistant then checks the editing dependencies and installs any missing tools and the default music library.',
+        'asr.settings': 'Speech recognition settings', 'asr.setup': 'Set up speech recognition', 'asr.label': 'Doubao Speech API key', 'asr.private': 'The key is saved to the local credential store, not the editing chat.',
+        'asr.required': 'No speech recognition API key was found. Save one to continue runtime setup.',
+        'asr.check': 'Checking for an API key…', 'asr.configured': 'A key was found. You can replace it here. The service checks it when you use speech recognition.', 'asr.missing': 'Not configured. Add an API key to use speech recognition.',
+        'asr.checkError': 'Could not check the key status.', 'asr.saveError': 'Could not save the API key. Check its format or try again.',
+        'asr.save': 'Save key', 'asr.continue': 'Save and continue', 'asr.saving': 'Saving…', 'asr.saved': 'Speech recognition API key saved.', 'asr.close': 'Close',
         'environment.chat': 'Runtime setup', 'environment.working': 'Setting up the runtime. See the conversation below.', 'environment.pending': 'Confirm or reply in the conversation to continue.',
-        'environment.waiting': 'Check the setup result below. Reconfigure runtime sends the request in a new conversation.', 'environment.recheck': 'Check status again',
-        'environment.done': 'The runtime is ready. Start a new conversation to begin editing.', 'environment.error': 'Runtime setup action failed: {detail}',
-        prompt: 'Call duanju_slice_cut to make a new version in this conversation:\n```json\n{parameters}\n```\nKeep previous versions. Make one version without a Word file, then briefly give the episode, timecode, plan.json, draft and video paths.',
+        'environment.waiting': 'If setup is incomplete, reply “Please continue setup” below. You can keep using this conversation.',
+        'environment.done': 'The runtime is ready. Start a new conversation to begin editing.', 'environment.error': 'Runtime setup action failed: {detail}', 'environment.statusError': 'Could not verify the setup status yet: {detail}',
+        prompt: 'Call duanju_slice_cut to make a new version in this conversation:\n```json\n{parameters}\n```\nKeep previous versions. Make one version without a Word file, then briefly give the episode, timecode, and output paths.',
       },
     };
 
@@ -88,6 +106,7 @@ window.__ModuleLoader__.load({
       return {
         ...Object.fromEntries(fields.map((key) => [key, String(value[key] ?? '').trim()])),
         direction: String(value.direction ?? '').trim(),
+        mode: value.mode === 'slice' ? 'slice' : 'mix',
       };
     }
     function validation(value, generating = false) {
@@ -101,8 +120,12 @@ window.__ModuleLoader__.load({
       if (value.dramaDir && next.dramaDir.trim() !== value.dramaDir.trim() && !Object.hasOwn(patch, 'subtitleDir')) next.subtitleDir = '';
       return next;
     }
-    function runParameters(value) { return normalize(value); }
+    function runParameters(value) {
+      const { subtitleDir, ...settings } = normalize(value);
+      return settings.mode === 'slice' ? settings : { ...settings, subtitleDir };
+    }
     const shortName = (path) => path ? path.split(/[\\/]/).filter(Boolean).pop() || path : '';
+    const duration = (result) => Number((result.duration ?? (result.end - result.start)).toFixed(1));
     function Icon({ name, size = 16, className }) {
       const paths = {
         chevron: 'M7 10l5 5 5-5', plus: 'M12 5v14M5 12h14', close: 'M6 6l12 12M18 6L6 18', check: 'M5 12l4 4L19 6',
@@ -112,6 +135,7 @@ window.__ModuleLoader__.load({
         chat: 'M21 11.5a8.5 8.5 0 01-8.5 8.5H3l2.5-4.5A8.5 8.5 0 1121 11.5zM8 10h8M8 14h5',
         panel: 'M4 4h16v16H4zM9 4v16M15 9l-3 3 3 3', panelOpen: 'M4 4h16v16H4zM9 4v16M12 9l3 3-3 3',
         edit: 'M4 20l4-1 12-12-3-3L5 16zM14 7l3 3', lock: 'M5 10h14v11H5zM8 10V7a4 4 0 018 0v3', film: 'M3 4h18v16H3zM7 4v16M17 4v16M3 9h4M17 9h4M3 15h4M17 15h4',
+        settings: 'M10 3h4l.5 2.7 1.8 1 2.6-.9 2 3.4-2.1 1.9v2l2.1 1.9-2 3.4-2.6-.9-1.8 1-.5 2.5h-4l-.5-2.5-1.8-1-2.6.9-2-3.4 2.1-1.9v-2L3.1 9.2l2-3.4 2.6.9 1.8-1zM15 12a3 3 0 1 0-6 0 3 3 0 0 0 6 0z',
         info: 'M12 8h.01M12 11v6M22 12a10 10 0 11-20 0 10 10 0 0120 0',
         alert: 'M12 8v5M12 16h.01M10.2 4.2L2.5 17.5A1.7 1.7 0 004 20h16a1.7 1.7 0 001.5-2.5L13.8 4.2a2.1 2.1 0 00-3.6 0',
         spinner: 'M21 12a9 9 0 11-9-9', dot: 'M12 11h.01', refresh: 'M20 10a8 8 0 10-1 7M20 4v6h-6',
@@ -126,7 +150,7 @@ window.__ModuleLoader__.load({
     }
 
     const css = `
-.wb-root{--wb-bg:var(--dsw-alias-bg-base,#fff);--wb-soft:color-mix(in srgb,var(--dsw-alias-label-primary,#202530) 3.5%,var(--dsw-alias-bg-base,#fff));--wb-line:var(--dsw-alias-border-l2,#e5e7ed);--wb-ink:var(--dsw-alias-label-primary,#202530);--wb-ink2:var(--dsw-alias-label-secondary,#555e6e);--wb-ink3:var(--dsw-alias-label-tertiary,#767f8f);--wb-hover:var(--dsw-alias-interactive-bg-hover,#edf0f6);--wb-accent:#4565e8;--wb-success:#278653;--wb-error:#c74743;position:relative;display:flex;flex:1;height:100%;min-height:0;min-width:0;overflow:hidden;background:var(--wb-bg);color:var(--wb-ink);font:14px/1.55 var(--dsw-font-family,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif);container:studio / inline-size}
+.wb-root{--wb-bg:var(--dsw-alias-bg-base,#fff);--wb-soft:color-mix(in srgb,var(--dsw-alias-label-primary,#202530) 3.5%,var(--dsw-alias-bg-base,#fff));--wb-line:var(--dsw-alias-border-l2,#e5e7ed);--wb-ink:var(--dsw-alias-label-primary,#202530);--wb-ink2:var(--dsw-alias-label-secondary,#555e6e);--wb-ink3:var(--dsw-alias-label-tertiary,#767f8f);--wb-hover:var(--dsw-alias-interactive-bg-hover,#edf0f6);--wb-accent:var(--dsw-alias-brand-primary,#4565e8);--wb-success:#278653;--wb-error:#c74743;position:relative;display:flex;flex:1;height:100%;min-height:0;min-width:0;overflow:hidden;background:var(--wb-bg);color:var(--wb-ink);font:14px/1.55 var(--dsw-font-family,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif);container:studio / inline-size}
 .wb-root *,.wb-root *::before,.wb-root *::after{box-sizing:border-box}
 .wb-root button,.wb-root input,.wb-root textarea{font:inherit;color:inherit}
 .wb-root button{cursor:pointer}
@@ -203,6 +227,13 @@ window.__ModuleLoader__.load({
 .wb-card-head h3{font-size:13px;font-weight:600}
 .wb-step-number{font-size:10px;font-weight:500;letter-spacing:.04em;color:var(--wb-ink3)}
 .wb-fields{padding:4px 20px}
+.wb-mode{min-inline-size:0;margin:14px 0 6px;padding:0;border:0}
+.wb-mode legend{padding:0;font-size:12px;font-weight:600}
+.wb-mode-options{display:flex;flex-wrap:wrap;gap:6px;margin-block:6px}
+.wb-mode-options label{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 10px;border:1px solid var(--wb-line);border-radius:6px;font-size:12px;cursor:pointer}
+.wb-mode-options label:has(:checked){border-color:var(--wb-accent);background:color-mix(in srgb,var(--wb-accent) 7%,var(--wb-bg))}
+.wb-mode-options input{margin:0;accent-color:var(--wb-accent)}
+.wb-mode p{color:var(--wb-ink2);font-size:11px}
 .wb-field{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;column-gap:12px;padding:14px 0}
 .wb-field+.wb-field{border-top:1px solid var(--wb-line)}
 .wb-field-label{display:block;margin-bottom:0;font-size:12px;font-weight:500;color:var(--wb-ink2)}
@@ -309,7 +340,12 @@ window.__ModuleLoader__.load({
 .duanju-picker-name{overflow-wrap:anywhere}
 .duanju-picker-kind{flex:none;font-size:10px;opacity:.6}
 .duanju-picker-message{padding:12px}
-.duanju-picker-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.duanju-picker-footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:18px}
+.wb-asr-modal{width:min(408px,calc(100vw - 32px));margin:auto}
+.wb-asr-modal label{display:block;font-weight:600;margin-bottom:5px}
+.wb-asr-modal .duanju-control{width:100%;min-width:0}
+.wb-asr-modal .wb-asr-help{font-size:11px;margin-top:8px}
+.wb-asr-modal .wb-alert{margin:10px 0 0}
 .duanju-studio-error{color:#c74743}
 
 .wb-bar{position:relative;z-index:5;flex-wrap:wrap;padding-inline-start:max(20px,var(--dsh-frame-leading-clearance,0px))}
@@ -319,7 +355,7 @@ window.__ModuleLoader__.load({
 .wb-current-session{min-width:0;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:16px;border-left:1px solid var(--wb-line);font-size:12px;color:var(--wb-ink2)}
 .wb-list-toggle[aria-expanded="true"]{color:var(--wb-ink);background:var(--wb-soft)}
 .wb-nav-new{border-color:color-mix(in srgb,var(--wb-accent) 18%,var(--wb-bg));background:color-mix(in srgb,var(--wb-accent) 6%,var(--wb-bg));color:var(--wb-accent)!important}
-@container slice (max-width:850px){.wb-bar-left{gap:12px}.wb-current-session{max-width:170px;padding-left:10px}.wb-bar-right{gap:6px}.wb-runtime-reconfigure span{display:none}}
+@container slice (max-width:850px){.wb-bar-left{gap:12px}.wb-current-session{max-width:170px;padding-left:10px}.wb-bar-right{gap:6px}}
 @container slice (max-width:620px){.wb-bar-left{gap:8px}.wb-brand .wb-title{display:none}.wb-current-session{max-width:150px}.wb-nav-new span,.wb-chat-toggle span,.wb-editor-open span{display:none}}
 
 @keyframes wb-spin{to{transform:rotate(360deg)}}
@@ -404,9 +440,9 @@ window.__ModuleLoader__.load({
           if (validation(settings)) throw new Error(t('error.response'));
           return { settings, sessionId: value.sessionId };
         }
-        async function command(runtime, request, signal = runtime.abort.signal, files = [], sessionId = runtime.reference.sessionId) {
+        async function command(runtime, request, signal = runtime.abort.signal) {
           active(runtime);
-          const execution = remoteValue(await remote.commands.execute(sessionId, '/duanju-slice ' + JSON.stringify(request), files, signal));
+          const execution = remoteValue(await remote.commands.execute(runtime.reference.sessionId, '/duanju-slice ' + JSON.stringify(request), [], signal));
           active(runtime);
           if (execution?.result?.kind === 'error') throw new Error(execution.result.text || t('error.command'));
           if (execution?.result?.kind !== 'success') throw new Error(t('error.response'));
@@ -519,6 +555,61 @@ window.__ModuleLoader__.load({
               h('button', { className: 'duanju-button', type: 'button', autoFocus: !onConfirm, disabled: !!onConfirm && disabled, onClick: onConfirm || onClose }, translate(onConfirm ? accept : 'confirm'))));
         }
 
+        function AsrSettings({ setup, setupButton, check, save, onContinue, onClose }) {
+          const translate = useLocale();
+          const dialog = React.useRef(null);
+          const input = React.useRef(null);
+          const title = React.useId();
+          const field = React.useId();
+          const description = React.useId();
+          const [status, setStatus] = React.useState(setup ? 'asr.required' : 'asr.check');
+          const [pending, setPending] = React.useState(false);
+          const [failed, setFailed] = React.useState(false);
+          React.useEffect(() => {
+            const element = dialog.current;
+            const trigger = setupButton?.current ?? element.ownerDocument.activeElement;
+            element.showModal();
+            input.current.focus();
+            return () => {
+              if (element.open) element.close();
+              if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+            };
+          }, []);
+          React.useEffect(() => {
+            if (setup) return;
+            const abort = new AbortController();
+            const report = (key) => {
+              if (!abort.signal.aborted) setStatus(value => value === 'asr.check' ? key : value);
+            };
+            check(abort.signal).then(configured => report(configured ? 'asr.configured' : 'asr.missing'), () => report('asr.checkError'));
+            return () => abort.abort();
+          }, [check, setup]);
+          async function submit(event) {
+            event.preventDefault();
+            if (pending) return;
+            input.current.focus();
+            setPending(true); setFailed(false);
+            try {
+              await save(input.current.value);
+              if (input.current) input.current.value = '';
+              if (setup) onContinue();
+              else setStatus('asr.saved');
+            } catch { setFailed(true); }
+            finally { setPending(false); }
+          }
+          return h('dialog', { ref: dialog, className: 'duanju-studio-dialog wb-asr-modal', 'aria-labelledby': title, 'aria-describedby': description, onCancel: (event) => { event.preventDefault(); if (!pending) onClose(); } },
+            h('h2', { id: title }, translate(setup ? 'asr.setup' : 'asr.settings')),
+            h('p', { role: 'status' }, translate(status)),
+            h('form', { onSubmit: submit },
+              h('label', { htmlFor: field }, translate('asr.label')),
+              h('input', { ref: input, id: field, type: 'password', className: 'duanju-control', autoComplete: 'off', spellCheck: false, required: true, readOnly: pending, 'aria-describedby': description }),
+              h('p', { id: description, className: 'wb-asr-help' }, translate('asr.private')),
+              failed && h('p', { className: 'wb-alert', role: 'alert' }, translate('asr.saveError')),
+              h('div', { className: 'duanju-picker-footer' },
+                h('button', { type: 'button', className: 'duanju-button', disabled: pending, onClick: onClose }, translate(setup ? 'cancel' : 'asr.close')),
+                h('button', { type: 'submit', className: 'wb-primary', disabled: pending }, translate(pending ? 'asr.saving' : setup ? 'asr.continue' : 'asr.save')))));
+        }
+
         function VideoPreview({ result, sessionId }) {
           const translate = useLocale();
           const [preview, setPreview] = React.useState({});
@@ -555,7 +646,6 @@ window.__ModuleLoader__.load({
           const pending = useSessionStatus((statuses) => statuses.get(setup.sessionId)?.pendingInteraction);
           const heading = React.useRef(null);
           const [checkError, setCheckError] = React.useState(null);
-          const [recheck, setRecheck] = React.useState(0);
           const { check, complete, sending, opening, failure, onReconfigure, onNew } = setup;
           const busy = sending || running || !!pending;
           React.useEffect(() => { heading.current?.focus(); }, []);
@@ -568,15 +658,14 @@ window.__ModuleLoader__.load({
               if (!abort.signal.aborted) setCheckError(detail(error));
             });
             return () => abort.abort();
-          }, [busy, complete, check, recheck]);
-          const error = failure || (!complete && checkError && translate('environment.error', { detail: checkError }));
+          }, [busy, complete, check]);
+          const error = failure || (!busy && !complete && checkError && translate('environment.statusError', { detail: checkError }));
           return h('section', { className: 'wb-environment-chat', 'aria-label': translate('environment.chat') },
             h('header', { className: 'wb-chat-head' },
               h('div', null, h('strong', { ref: heading, tabIndex: -1 }, translate('environment.chat')),
                 h('p', { role: 'status' }, translate(complete ? 'environment.done' : pending ? 'environment.pending' : sending ? 'environment.prepare' : running ? 'environment.working' : 'environment.waiting'))),
               h('div', { className: 'wb-environment-actions' },
-                !complete && h('button', { type: 'button', className: 'wb-ghost', disabled: busy, onClick: () => setRecheck(value => value + 1) }, translate('environment.recheck')),
-                h('button', { type: 'button', className: complete ? 'wb-primary' : 'wb-secondary', disabled: complete ? opening : busy, onClick: complete ? onNew : onReconfigure },
+                h('button', { type: 'button', className: complete ? 'wb-primary' : 'wb-secondary', title: complete ? undefined : translate('environment.reconfigureHelp'), disabled: complete ? opening : busy, onClick: complete ? onNew : onReconfigure },
                   h(Icon, { name: complete ? 'plus' : 'refresh', size: 15 }), translate(complete ? 'sessions.new' : 'environment.reconfigure')))),
             error && h('div', { className: 'wb-alert', role: 'alert' }, error),
             h('div', { className: 'wb-chat' }, renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: EditingChat } })));
@@ -602,13 +691,18 @@ window.__ModuleLoader__.load({
           const chatButton = React.useRef(null);
           const alive = React.useRef(true);
           const subtitleHelpId = React.useId();
+          const modeHelpId = React.useId();
           const directionId = React.useId();
           const directionHelpId = React.useId();
           const chatId = React.useId();
           React.useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-          const { settings, failure, saving, status, sending, busy, change, commit, lockConfiguration, generate, selectVersion, openJianying, openingJianying, browse, reportNotice, item = {}, sessionId, sessionTitle, onNew, reconfigure, reconfiguring, refresh } = model;
+          const { settings, failure, status, sending, busy, change, commit, lockConfiguration, generate, selectVersion, openJianying, openingJianying, browse, reportNotice, item = {}, sessionId, sessionTitle, onNew, openAsrSettings, refresh } = model;
+          const mode = settings.mode === 'slice' ? 'slice' : 'mix';
+          const slice = mode === 'slice';
+          const visibleFields = slice ? requiredFields : fields;
           const task = item.task;
           const result = item.lastResult;
+          const episodeLabel = result && (result.workDir && result.episodes?.length ? translate('result.episodes', { n: result.episodes.length }) : translate('result.episode', { episode: result.episode }));
           React.useEffect(() => {
             if (started) { setChatVisited(true); setChatOpen(true); }
           }, [started]);
@@ -657,19 +751,21 @@ window.__ModuleLoader__.load({
             try { remoteValue(await remote.session.openWorkspacePath({ path, ...(action ? { action } : {}) })); }
             catch (error) { if (alive.current) reportNotice({ key: 'error.output', detail: detail(error) }); }
           }
-          const stage = ['survey', 'pick', 'render', 'draft'];
-          const progressKey = ['asr', 'asr-cached'].includes(task?.stage) ? 'locate' : task?.stage;
+          const stage = slice ? ['survey', 'pick', 'draft', 'render'] : ['survey', 'pick', 'render', 'draft'];
+          const currentStage = task?.stage;
+          const progressKey = ['asr', 'asr-cached'].includes(currentStage) ? 'locate' : ['frames', 'pick-subtitles'].includes(currentStage) ? 'pick' : currentStage;
           const stageIndex = progressKey === 'locate' ? 1 : stage.indexOf(progressKey);
-          const progressText = pending ? 'progress.pending' : 'progress.' + (stageIndex < 0 ? 'queued' : progressKey);
+          const stageLabel = (prefix, key) => prefix + '.' + key + (slice && key === 'draft' ? '.slice' : '');
+          const progressText = pending ? 'progress.pending' : stageLabel('progress', stageIndex < 0 ? 'queued' : progressKey);
           return h('div', { className: 'wb-shell', 'data-chat-open': chatOpen, 'data-started': started },
             h('input', { ref: scriptInput, type: 'file', accept: '.docx', hidden: true, onChange: selectScript }),
             h('header', { className: 'wb-bar', 'data-window-drag': true },
               h('div', { className: 'wb-bar-left' }, model.navigation, h('div', { className: 'wb-brand' }, h(FilmIcon, { size: 21 }), h('h1', { className: 'wb-title' }, translate('title'))), h('span', { className: 'wb-current-session', title: sessionTitle }, sessionTitle)),
               h('div', { className: 'wb-bar-right' },
-                h('button', { type: 'button', className: 'wb-secondary wb-runtime-reconfigure', disabled: busy || sending, 'aria-label': translate('environment.reconfigure'), title: translate('environment.reconfigureHint'), onClick: reconfigure }, h(Icon, { name: reconfiguring ? 'spinner' : 'refresh', size: 15, className: reconfiguring ? 'wb-spinner' : undefined }), h('span', null, translate(reconfiguring ? 'environment.prepare' : 'environment.reconfigure'))),
+                h('button', { type: 'button', className: 'wb-secondary wb-settings', 'aria-label': translate('asr.settings'), 'aria-haspopup': 'dialog', title: translate('asr.settings'), onClick: openAsrSettings }, h(Icon, { name: 'settings', size: 16 })),
                 h('button', { type: 'button', className: 'wb-secondary wb-nav-new', disabled: busy || sending, 'aria-label': translate('sessions.new'), title: translate('sessions.new'), onClick: onNew }, h(Icon, { name: 'plus', size: 15 }), h('span', null, translate('sessions.new'))),
                 h('button', { type: 'button', className: 'wb-secondary wb-editor-open', disabled: !!openingJianying, 'aria-label': translate('editor.open'), title: translate('editor.open'), onClick: openJianying }, h(Icon, { name: openingJianying ? 'spinner' : 'arrow', size: 15, className: openingJianying ? 'wb-spinner' : undefined }), h('span', null, translate(openingJianying ? 'editor.opening' : 'editor.open'))),
-                h('span', { className: 'wb-state', 'data-state': status, role: 'status', 'aria-live': 'polite' }, h(Icon, { name: reconfiguring || status === 'saving' ? 'spinner' : status === 'saved' ? 'check' : 'dot', size: 13 }), translate(reconfiguring ? 'environment.prepare' : 'status.' + status)),
+                h('span', { className: 'wb-state', 'data-state': status, role: 'status', 'aria-live': 'polite' }, h(Icon, { name: status === 'saving' ? 'spinner' : status === 'saved' ? 'check' : 'dot', size: 13 }), translate('status.' + status)),
                 h('button', { ref: chatButton, type: 'button', className: 'wb-secondary wb-chat-toggle', 'aria-label': translate(chatOpen ? 'chat.close' : 'chat.open'), 'aria-expanded': chatOpen, 'aria-controls': chatId, onClick: () => chatOpen ? closeChat() : openChat() }, h(Icon, { name: 'chat', size: 15 }), h('span', null, translate(chatOpen ? 'chat.close' : 'chat.open'))))),
             h('div', { className: 'wb-scroll' },
               h('div', { className: 'wb-content' },
@@ -681,7 +777,9 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'wb-workspace' },
                   h('section', { className: 'wb-config', 'data-locked': configurationLocked, 'aria-label': translate('config.title') },
                     configurationLocked && h('div', { className: 'wb-config-summary' },
-                      h('span', { className: 'wb-config-files' }, fields.map(field => {
+                      h('span', { className: 'wb-config-files' },
+                        h('span', { title: translate('mode.label') }, h(Icon, { name: 'film', size: 13 }), h('span', null, translate('mode.' + mode))),
+                        visibleFields.map(field => {
                         const name = shortName(settings[field]);
                         const label = field === 'subtitleDir'
                           ? (name ? translate('config.subtitles', { name }) : translate('config.noSubtitles'))
@@ -693,7 +791,13 @@ window.__ModuleLoader__.load({
                   !configurationLocked && h('form', { className: 'wb-form', onSubmit: (event) => { event.preventDefault(); if (!locked && !missing) lockConfiguration(); } },
                     h('section', { className: 'wb-card' },
                       h('div', { className: 'wb-card-head' }, h('h3', null, translate('form.sources'))),
-                      h('div', { className: 'wb-fields' }, fields.map((field) => {
+                      h('div', { className: 'wb-fields' },
+                        h('fieldset', { className: 'wb-mode', disabled: locked, 'aria-describedby': modeHelpId },
+                          h('legend', null, translate('mode.label')),
+                          h('div', { className: 'wb-mode-options' }, ['mix', 'slice'].map(value => h('label', { key: value },
+                            h('input', { type: 'radio', name: modeHelpId + '-value', value, checked: mode === value, onChange: () => commit(change({ mode: value })) }), translate('mode.' + value)))),
+                          h('p', { id: modeHelpId }, translate('mode.' + mode + '.help'))),
+                        visibleFields.map((field) => {
                         const subtitle = field === 'subtitleDir';
                         const path = settings[field];
                         return h('div', { key: field, className: 'wb-field' },
@@ -714,11 +818,11 @@ window.__ModuleLoader__.load({
                       h('p', { className: 'wb-form-note', role: 'status' }, translate(missing ? 'missing.' + missing : 'form.ready'))))),
                   h('section', { className: 'wb-output' },
                     h('div', { className: 'wb-card' },
-                      h('div', { className: 'wb-output-head' }, h('h3', null, translate(result ? completed ? 'result.title' : 'result.previous' : 'preview.title')), started && h('span', { className: 'wb-badge', 'data-state': badge }, translate('badge.' + badge)), (item.results?.length ?? 0) > 1 ? h('select', { className: 'wb-version-select', 'aria-label': translate('result.versions'), value: result.version, disabled: working || busy, onChange: (event) => selectVersion(Number(event.target.value)) }, item.results.map(version => h('option', { key: version.id, value: version.version }, translate('result.version', { version: version.version, n: Number((version.end - version.start).toFixed(1)) })))) : result && h('span', null, translate('result.episode', { episode: result.episode }))),
+                      h('div', { className: 'wb-output-head' }, h('h3', null, translate(result ? completed ? 'result.title' : 'result.previous' : 'preview.title')), started && h('span', { className: 'wb-badge', 'data-state': badge }, translate('badge.' + badge)), (item.results?.length ?? 0) > 1 ? h('select', { className: 'wb-version-select', 'aria-label': translate('result.versions'), value: result.version, disabled: working || busy, onChange: (event) => selectVersion(Number(event.target.value)) }, item.results.map(version => h('option', { key: version.id, value: version.version }, translate('result.version', { version: version.version, n: duration(version) })))) : result && h('span', null, episodeLabel)),
                       cutting || pending ? h('div', { className: 'wb-progress wb-progress-run', role: 'status', 'aria-live': 'polite' },
                         h('div', { className: 'wb-progress-title' }, h(Icon, { name: pending ? 'alert' : 'spinner', size: 18, className: pending ? undefined : 'wb-spinner' }), translate(progressText)),
                         h('p', { className: 'wb-progress-text' }, translate('progress.help')),
-                        h('ol', { className: 'wb-steps' }, stage.map((step, index) => h('li', { key: step, 'data-state': index === stageIndex ? 'active' : index < stageIndex ? 'done' : 'next', 'aria-current': index === stageIndex ? 'step' : undefined }, h('span', { className: 'wb-step-dot' }, index < stageIndex ? h(Icon, { name: 'check', size: 11 }) : index + 1), h('span', null, translate('step.' + step))))),
+                        h('ol', { className: 'wb-steps' }, stage.map((step, index) => h('li', { key: step, 'data-state': index === stageIndex ? 'active' : index < stageIndex ? 'done' : 'next', 'aria-current': index === stageIndex ? 'step' : undefined }, h('span', { className: 'wb-step-dot' }, index < stageIndex ? h(Icon, { name: 'check', size: 11 }) : index + 1), h('span', null, translate(stageLabel('step', step)))))),
                         h('button', { type: 'button', className: 'wb-ghost', onClick: openChat }, translate('chat.details'), h(Icon, { name: 'arrow', size: 13 }))) : null,
                       (failed || stopped) && h('div', { className: 'wb-progress', role: 'alert' },
                         h('div', { className: 'wb-progress-title' }, h(Icon, { name: 'alert', size: 18 }), translate(failed ? 'progress.failed' : 'progress.stopped')),
@@ -726,14 +830,14 @@ window.__ModuleLoader__.load({
                         h('button', { type: 'button', className: 'wb-ghost', onClick: openChat }, translate('chat.details'), h(Icon, { name: 'arrow', size: 13 }))),
                       refreshError && h('p', { className: 'wb-preview-fallback', role: 'status' }, translate('progress.refreshError')),
                       result?.outFile ? h(VideoPreview, { key: result.outFile, result, sessionId }) : h('div', { className: 'wb-preview-area' }, h(FilmIcon, { size: 37 }), h('strong', null, translate('preview.empty')), !started && h('p', null, translate('preview.help')), configurationLocked && h('button', { type: 'button', className: 'wb-secondary wb-generate', disabled: locked || !!missing, onClick: () => { if (!locked && !missing) generate(); } }, h(Icon, { name: working ? 'spinner' : 'play', size: 14, className: working ? 'wb-spinner' : undefined }), translate(cutting ? 'generate.running' : working ? 'chat.running' : 'generate'))),
-                      result && h('div', { className: 'wb-result-meta' }, h('strong', null, translate('result.episode', { episode: result.episode })), h('span', null, translate('result.duration', { n: Number((result.end - result.start).toFixed(1)) })), h('span', { className: 'wb-result-range' }, translate('result.range', { start: seconds(result.start), end: seconds(result.end) }))),
+                      result && h('div', { className: 'wb-result-meta' }, h('strong', null, episodeLabel), h('span', null, translate('result.duration', { n: duration(result) })), h('span', { className: 'wb-result-range' }, translate(result.workDir ? 'result.opening' : 'result.range', { episode: result.episode, start: seconds(result.start), end: seconds(result.end) }))),
                       result && h('div', { className: 'wb-output-files' },
                         result.outFile && h('button', { type: 'button', className: 'wb-secondary', title: result.outFile, onClick: () => openPath(result.outFile) }, h(Icon, { name: 'film', size: 14 }), translate('result.open')),
                         result.draftDir && h('button', { type: 'button', className: 'wb-secondary', title: result.draftDir, onClick: () => openPath(result.draftDir) }, h(Icon, { name: 'folder', size: 14 }), translate('result.draftOpen')),
                         result.outFile && h('button', { type: 'button', className: 'wb-ghost wb-reveal', 'aria-label': translate('result.reveal'), title: translate('result.reveal'), onClick: () => openPath(result.outFile, 'reveal') }, h(Icon, { name: 'arrow', size: 14 })))),
-                    result && h('div', { className: 'wb-draft-hint' }, h(Icon, { name: 'info', size: 13 }), h('span', null, translate('result.draftHint'))))))),
+                    result && h('div', { className: 'wb-draft-hint' }, h(Icon, { name: 'info', size: 13 }), h('span', null, translate(slice && !result.draftDir ? 'result.noDraft' : 'result.draftHint'))))))),
             chatVisited && h('aside', { id: chatId, className: 'wb-chat-drawer', hidden: !chatOpen, 'aria-label': translate('chat.title'), onKeyDown: (event) => { if (event.key === 'Escape') closeChat(); } },
-              h('div', { className: 'wb-chat-head' }, h('div', null, h('strong', null, translate('chat.title')), h('p', null, translate('chat.help'))), h('button', { type: 'button', className: 'wb-icon-button', 'aria-label': translate('chat.close'), onClick: closeChat }, h(Icon, { name: 'close', size: 18 }))),
+              h('div', { className: 'wb-chat-head' }, h('div', null, h('strong', null, translate('chat.title')), h('p', null, translate(slice ? 'chat.help.slice' : 'chat.help'))), h('button', { type: 'button', className: 'wb-icon-button', 'aria-label': translate('chat.close'), onClick: closeChat }, h(Icon, { name: 'close', size: 18 }))),
               h('div', { className: 'wb-chat' }, renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: EditingChat } }))),
             picker && h(Picker, { field: picker, initialPath: settings[picker], browse, onClose: () => setPicker(null), onChoose: (path) => { const next = change({ [picker]: path }); setPicker(null); commit(next); } }));
         }
@@ -784,7 +888,7 @@ window.__ModuleLoader__.load({
 
         function Studio({ SessionProvider, renderSlot }) {
           const translate = useLocale();
-          const [listOpen, setListOpen] = React.useState(true);
+          const [listOpen, setListOpen] = React.useState(false);
           const listId = React.useId();
           const listTrigger = React.useRef(null);
           const [reference, setReference] = React.useState(null);
@@ -799,7 +903,8 @@ window.__ModuleLoader__.load({
           const [notice, setNotice] = React.useState(null);
           const [saving, setSaving] = React.useState(false);
           const [sending, setSending] = React.useState(false);
-          const [reconfiguring, setReconfiguring] = React.useState(false);
+          const [asrDialog, setAsrDialog] = React.useState(null);
+          const setupButton = React.useRef(null);
           const [openingJianying, setOpeningJianying] = React.useState(false);
           const [busy, setBusy] = React.useState(false);
           const [retry, setRetry] = React.useState(0);
@@ -847,7 +952,7 @@ window.__ModuleLoader__.load({
             const runtime = { abort: new AbortController(), owned: new Set(), reference: null, saveTask: null, saved: '' };
             runtimeRef.current = runtime;
             setReference(null); setItems([]); setActiveId(null); activeRef.current = null;
-            setEnvironment('checking'); setStatus('loading'); setFailure(null); setNotice(null); setSaving(false); setSending(false); setOpeningJianying(false); setBusy(false);
+            setEnvironment('checking'); setStatus('loading'); setFailure(null); setNotice(null); setAsrDialog(null); setSaving(false); setSending(false); setOpeningJianying(false); setBusy(false);
             (async () => {
               const setup = cachedSession(SETUP_KEY);
               for (const id of new Set([setup, cachedSession(CACHE_KEY)].filter(Boolean))) {
@@ -901,11 +1006,12 @@ window.__ModuleLoader__.load({
                 await adopt(runtime, sessionId, false);
                 runtime.blankId = null;
                 runtime.setupId = sessionId;
-                rememberSession(SETUP_KEY, sessionId);
               }
-              setEnvironment('setup');
               const result = await command(runtime, { action: 'runtime-prompt' });
+              if (result.needsAsrKey === true) { setAsrDialog('setup'); return; }
               if (!result.accepted) throw new Error(translate('error.response'));
+              rememberSession(SETUP_KEY, runtime.setupId);
+              setEnvironment('setup');
             } catch (error) {
               if (!canceled(runtime, error)) setFailure({ key: 'environment.error', detail: detail(error) });
             } finally {
@@ -1067,27 +1173,19 @@ window.__ModuleLoader__.load({
             } catch (error) { failSession(runtime, error); }
             finally { if (!runtime.abort.signal.aborted) setBusy(false); }
           }
-          async function reconfigure() {
+          const checkAsrKey = React.useCallback(async (signal) => {
             const runtime = runtimeRef.current;
-            if (!runtime || busy || sending || runtime.reconfiguring) return;
-            runtime.reconfiguring = true;
-            setBusy(true); setReconfiguring(true); setFailure(null);
-            const navigation = ctx.layout.beginNavigation();
-            try {
-              await save();
-              navigation.throwIfAborted();
-              const sessionId = await blankSession(runtime);
-              navigation.throwIfAborted();
-              if (sessionId === runtime.reference.sessionId) throw new Error(translate('error.response'));
-              const result = await command(runtime, { action: 'runtime-prompt', reconfigure: true }, undefined, [], sessionId);
-              if (!result.accepted) throw new Error(translate('error.response'));
-              if (!navigation.aborted) ctx.uiWorkspace.openSession(sessionId);
-            } catch (error) {
-              if (!navigation.aborted && !canceled(runtime, error)) setFailure({ key: 'environment.error', detail: detail(error) });
-            } finally {
-              runtime.reconfiguring = false;
-              if (!runtime.abort.signal.aborted) { setBusy(false); setReconfiguring(false); }
-            }
+            if (!runtime) throw new DOMException('', 'AbortError');
+            const result = await command(runtime, { action: 'asr-status' }, signal);
+            return result.configured === true;
+          }, []);
+          async function saveAsrKey(value) {
+            const runtime = runtimeRef.current;
+            if (!runtime) throw new DOMException('', 'AbortError');
+            // The normal workbench command records its inputs; never send a key through it.
+            const execution = remoteValue(await remote.commands.execute(runtime.reference.sessionId, '/duanju-slice-store-asr-key ' + value.trim(), [], runtime.abort.signal));
+            active(runtime);
+            if (execution?.result?.kind !== 'success') throw new Error(translate('asr.saveError'));
           }
           async function renameSession(id, title) {
             const runtime = runtimeRef.current;
@@ -1121,6 +1219,8 @@ window.__ModuleLoader__.load({
           const activeItem = items.find((item) => item.id === activeId);
           const sessionTitle = activeItem?.title || translate('title');
           const closeList = () => setListOpen(false);
+          const closeAsrDialog = () => setAsrDialog(null);
+          const asrModal = asrDialog && h(AsrSettings, { setup: asrDialog === 'setup', setupButton, check: checkAsrKey, save: saveAsrKey, onClose: closeAsrDialog, onContinue: () => { closeAsrDialog(); void requestSetup(); } });
           if (environment !== 'editor') {
             const message = failure && translate(failure.key, { detail: failure.detail });
             return h('div', { className: 'wb-root' }, h('style', null, css),
@@ -1128,31 +1228,35 @@ window.__ModuleLoader__.load({
                 setup: { sessionId: reference.sessionId, check: checkSetup, complete: environment === 'complete', sending, opening: busy, failure: message, onReconfigure: () => requestSetup(true), onNew: startAfterSetup },
               })) : environment === 'required' ? h('main', { className: 'wb-environment' },
                 h('div', { className: 'wb-environment-start' }, h(FilmIcon, { size: 36 }), h('h1', null, translate('environment.title')), h('p', null, translate('environment.help')),
-                  h('button', { type: 'button', className: 'wb-primary', disabled: sending, onClick: () => requestSetup() }, translate('environment.button')),
+                  h('button', { ref: setupButton, type: 'button', className: 'wb-primary', 'aria-disabled': sending, onClick: () => requestSetup() }, translate('environment.button')),
                   sending && h('p', { role: 'status' }, translate('environment.prepare')),
                   message && h('div', { className: 'wb-alert', role: 'alert' }, message))) :
                 h('div', { className: failure ? 'wb-loading wb-environment-check wb-loading-error' : 'wb-loading wb-environment-check', role: failure ? 'alert' : 'status' },
                   h('span', null, message || translate('environment.check')),
-                  failure && h('button', { type: 'button', className: 'wb-ghost', onClick: () => setRetry(value => value + 1) }, translate('retry'))));
+                  failure && h('button', { type: 'button', className: 'wb-ghost', onClick: () => setRetry(value => value + 1) }, translate('retry'))),
+              asrModal);
           }
           return h('div', { className: 'wb-root' }, h('style', null, css),
             listOpen && h(React.Fragment, null,
               h('button', { type: 'button', className: 'wb-sessions-scrim', 'aria-label': translate('task.close'), tabIndex: -1, onClick: closeList }),
               h(SessionList, { id: listId, items, activeId, busy: busy || sending || status === 'loading', loading: status === 'loading', onClose: closeList, onSelect: switchTo, onRename: renameSession, onRemove: removeSession })),
             h('div', { className: 'wb-main' },
-              ready ? h(SessionProvider, { key: activeId, session: reference }, renderSlot(CONVERSATION, { model: { settings, failure, saving, status, sending, busy, openingJianying, reportNotice: setNotice, change, commit, lockConfiguration, generate, selectVersion, openJianying, browse, sessionId: activeId, sessionTitle, item: activeItem, navigation: h('button', { ref: listTrigger, type: 'button', className: 'wb-secondary wb-list-toggle', 'aria-label': translate('sessions.list'), 'aria-expanded': listOpen, 'aria-controls': listId, onClick: () => setListOpen(value => !value) }, h(Icon, { name: listOpen ? 'panel' : 'panelOpen', size: 15 }), h('span', null, translate('sessions.list'))), onNew: createSession, reconfigure, reconfiguring, refresh } })) :
+              ready ? h(SessionProvider, { key: activeId, session: reference }, renderSlot(CONVERSATION, { model: { settings, failure, saving, status, sending, busy, openingJianying, reportNotice: setNotice, change, commit, lockConfiguration, generate, selectVersion, openJianying, browse, sessionId: activeId, sessionTitle, item: activeItem, navigation: h('button', { ref: listTrigger, type: 'button', className: 'wb-secondary wb-list-toggle', 'aria-label': translate('sessions.list'), 'aria-expanded': listOpen, 'aria-controls': listId, onClick: () => setListOpen(value => !value) }, h(Icon, { name: listOpen ? 'panel' : 'panelOpen', size: 15 }), h('span', null, translate('sessions.list'))), onNew: createSession, openAsrSettings: () => setAsrDialog('settings'), refresh } })) :
                 h('div', { className: failure ? 'wb-loading wb-loading-error' : 'wb-loading', role: failure ? 'alert' : 'status' },
                   h('span', null, failure ? translate(failure.key, { detail: failure.detail }) : translate('loading')),
                   failure && h('button', { className: 'wb-ghost', type: 'button', onClick: () => setRetry((value) => value + 1) }, translate('retry')))),
 
-            notice && h(Notice, { message: notice, onClose: () => setNotice(null), disabled: busy || saving, onConfirm: notice.sessionId ? confirmRemove : undefined, heading: notice.heading, accept: notice.accept }));
+            notice && h(Notice, { message: notice, onClose: () => setNotice(null), disabled: busy || saving, onConfirm: notice.sessionId ? confirmRemove : undefined, heading: notice.heading, accept: notice.accept }),
+            asrModal);
         }
 
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: NS, order: 5, label: () => t('title') }, FilmIcon));
         ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: NS, locale: NS, children: { [CONVERSATION]: { kind: 'single', scope: 'session' } } }, Studio));
         ctx.slots.inject(CONVERSATION, () => ctx.slots.register({ name: CONVERSATION, locale: NS }, Conversation));
         // Keep settings/browse operations in the durable log without flooding the transcript.
-        ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register({ name: 'conversation.chat.commandview', key: 'duanju-slice' }, () => null));
+        ctx.slots.inject('conversation.chat.commandview', () => {
+          for (const key of ['duanju-slice', 'duanju-slice-store-asr-key']) ctx.slots.register({ name: 'conversation.chat.commandview', key }, () => null);
+        });
       },
     };
   },
