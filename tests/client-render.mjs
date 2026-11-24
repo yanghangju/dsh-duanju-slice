@@ -269,7 +269,7 @@ test('once settings are locked, Generate is enabled and chat explains fixed BGM'
   assert.match(generateButton, />生成初版<\/button>/)
   assert.doesNotMatch(generateButton, /disabled=/)
   assert.match(html, /aria-label="原生聊天输入"/)
-  assert.match(html, /BGM 固定为 −5 dB/)
+  assert.match(html, /BGM 固定为 −12 dB/)
   assert.doesNotMatch(html, /音乐减半|<input\b[^>]*\btype="(?:range|number)"/)
 })
 

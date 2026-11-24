@@ -139,20 +139,24 @@ class RunnerTests(unittest.TestCase):
                 self.call("beats", {"audio": str(self.music), "output": output})
         self.assertFalse((self.root / "outside.json").exists())
 
-    def test_sync_atomically_updates_only_fixed_plan(self):
+    def test_sync_returns_candidate_without_writing_fixed_plan(self):
         beats, analysis = self.analysis()
         original = self.sync_plan()
+        plan_path = self.work / "plan.json"
         result = self.call("sync", {"plan": original, "beats": str(beats)})
-        self.assertEqual(str(self.work / "plan.json"), result["plan"])
-        synced = runner.promo.load_json(result["plan"])
+        self.assertFalse(plan_path.exists())
+        synced = result["synced_plan"]
         self.assertEqual(original["segments"][-1], synced["segments"][-1])
         self.assertEqual(5, sum(runner.promo.clip_duration(s) for s in synced["segments"][:-1]))
         self.assertGreaterEqual(result["major_hits"], 2)
         self.assertLessEqual(result["max_error_seconds"], 1 / 60 + 1e-9)
-        self.assertEqual(6, self.call("validate")["duration"])
+        self.assertEqual(6, self.call("validate", {"plan": synced})["duration"])
+        runner.write_json(plan_path, synced)
+        saved = plan_path.read_bytes()
         original["title"] = "updated"
-        self.call("sync", {"plan": original, "beats": str(beats)})
-        self.assertEqual("updated", runner.promo.load_json(result["plan"])["title"])
+        candidate = self.call("sync", {"plan": original, "beats": str(beats)})
+        self.assertEqual("updated", candidate["synced_plan"]["title"])
+        self.assertEqual(saved, plan_path.read_bytes())
         self.assertEqual(analysis, runner.promo.load_json(beats))
         self.assertFalse(list(self.work.glob("*.writing")))
         for data in ({"plan": original, "beats": str(beats), "audioIndex": -1},

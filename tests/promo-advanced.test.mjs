@@ -7,6 +7,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { mockAsr } from './support-asr.mjs'
+import { cleanup, exec, ffmpeg as fixtureFfmpeg, hasFfmpeg, tempDir } from './support.mjs'
 
 const json = async (file) => JSON.parse(await readFile(file, 'utf8'))
 const hash = async (file) => createHash('sha256').update(await readFile(file)).digest('hex')
@@ -21,6 +22,59 @@ const deepFreeze = (value) => {
   }
   return value
 }
+
+test('快切只搜索紧邻的无对白空档，不越过其他对白或片头片尾', async () => {
+  const { adjacentGap } = await import('../lib/promo/montage-review.js')
+  const anchor = { start: 34, end: 37 }
+  const track = [anchor, { start: 24, end: 28 }, { start: 41, end: 42 }, { start: 19, end: 25 }]
+  assert.deepEqual(adjacentGap(track, anchor, 'before', 60), { start: 28, end: 34 })
+  assert.deepEqual(adjacentGap(track, anchor, 'after', 60), { start: 37, end: 41 })
+  assert.deepEqual(adjacentGap([...track, { start: 32, end: 35 }], anchor, 'before', 60), { start: 34, end: 34 })
+  assert.deepEqual(adjacentGap([anchor], anchor, 'before', 60), { start: 24, end: 34 })
+  assert.deepEqual(adjacentGap([anchor], anchor, 'after', 40), { start: 37, end: 40 })
+})
+
+test('快切同批查目标动作、字幕和闪镜，跨批次保留前后画面', { skip: !hasFfmpeg }, async t => {
+  const { reviewMontage } = await import('../lib/promo/montage-review.js')
+  const dir = await tempDir('montage-flash-')
+  t.after(() => cleanup(dir))
+  const file = join(dir, 'flash.mp4')
+  await exec(fixtureFfmpeg, ['-v', 'error', '-f', 'lavfi', '-i', 'color=blue:s=160x96:r=30:d=1.5',
+    '-vf', "drawbox=color=red:t=fill:enable='eq(n,20)'", '-c:v', 'libx264', '-pix_fmt', 'yuv420p', file])
+  const task = { runtime: { ffmpeg: fixtureFfmpeg } }
+  const candidates = [{ target: { visual: '迈克看表' }, episode: 1, file, start: 0, end: 1.4 }]
+  let missing = true
+  const batches = []
+  const services = {
+    attachments: { imageLimits: { maxImagesPerMessage: 3 }, saveImages: async images => images.map(({ data }) => createHash('sha256').update(data).digest('hex')) },
+    llm: { resolveModelInfo: async () => ({ inputModalities: ['image'] }), async *stream({ system, messages }) {
+      assert.match(system, /叠加字幕/)
+      assert.match(system, /突然闪到无关画面/)
+      const content = messages[0].content
+      const rows = content.filter(({ type }) => type === 'text').map(({ text }) => /^快切抽帧检查 (f\d+_\d+)｜镜组 1｜原片时间 ([\d.]+) 秒｜目标 "迈克看表"$/.exec(text))
+      const times = rows.map(([, , time]) => Number(time))
+      batches.push(times)
+      const reviews = rows.map(([, id], i) => {
+        const flash = times[i] === 0.666667 && times[i - 1] === 0.333333 && times[i + 1] === 1
+        if (flash) {
+          assert.notEqual(content[2 * i + 1].attachment, content[2 * (i - 1) + 1].attachment)
+          assert.notEqual(content[2 * i + 1].attachment, content[2 * (i + 1) + 1].attachment)
+        }
+        return { id, status: flash ? 'flash' : 'clear' }
+      })
+      yield { type: 'text-delta', text: JSON.stringify({ reviews: missing ? reviews.slice(0, -1) : reviews }) }
+    } },
+  }
+  const review = () => reviewMontage({ get: key => services[key] }, task, candidates, dir, { provider: 'mock', model: 'mock' })
+  await assert.rejects(review, /缺少有效判定/)
+  assert.equal(candidates[0].ranges, undefined)
+  missing = false
+  batches.length = 0
+  await review()
+  assert.deepEqual(batches, [[0, 0.333333, 0.666667], [0.333333, 0.666667, 1], [0.666667, 1, 1.333333]])
+  assert.deepEqual(candidates[0].rejected, ['出现闪镜、跳帧或卡帧'])
+  assert.deepEqual(candidates[0].ranges, [{ start: 0, end: 1 / 3 }, { start: 1, end: 4 / 3 }].map(({ start, end }) => ({ start, end: Number(end.toFixed(9)) })))
+})
 
 test('direct promo flow mixes SRT and automatic ASR fallback in one rendered plan without Word', async (t) => {
   const root = await mkdtemp(fileURLToPath(new URL('../.promo-advanced-test-', import.meta.url)))
@@ -73,25 +127,42 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
   const subtitleDir = join(root, '字幕')
   const subtitle1 = join(subtitleDir, 'EP01.srt')
   await mkdir(subtitleDir)
-  await writeFile(subtitle1, '1\n00:00:03,000 --> 00:00:04,000\nNow it is\n\n2\n00:00:04,000 --> 00:00:05,000\nmy turn to play.\n')
+  await writeFile(subtitle1, '3\n00:00:00,100 --> 00:00:00,500\nSomeone is behind the door.\n\n1\n00:00:03,000 --> 00:00:04,000\nNow it is\n\n2\n00:00:04,000 --> 00:00:05,000\nmy turn to play.\n')
   const originals = [scriptPath, subtitle1, episode1, ...parts, music, musicIndex, BUNDLED_ENDING_SOUND]
   const originalHashes = await Promise.all(originals.map(hash))
 
   const speech = await mockAsr([
-    { definite: true, start_time: 3000, end_time: 5000, text: '现在轮到我出牌。' },
+    { definite: true, start_time: 100, end_time: 500, text: '现在轮到我出牌。' },
     { definite: true, start_time: 9000, end_time: 11000, text: '追上他。' },
   ])
   t.after(() => speech.close())
   const config = { ffmpegPath: ffmpeg, ffprobePath: ffprobe, advanced: { pythonPath: process.env.DUANJU_PYTHON || BUNDLED_PYTHON }, volcApiKey: 'test-key', volcEndpoint: speech.url, volcPaceMs: 0 }
   const exec = { agent: { id: 'advanced-fixture' }, signal: t.signal }
   const visualPrompts = []
+  const montageFrames = []
+  let allowVision = true
+  let blockedShot = '动作1'
+  let blockedStatus = 'subtitle'
   const services = {
     agentDefaultModel: undefined,
     llm: {
       resolveModelInfo: async () => ({ inputModalities: ['image'] }),
       async *stream({ messages }) {
+        assert.ok(allowVision, 'Rendering and draft export must not call the vision model')
         const content = messages.at(-1).content
         assert.ok(content.some(({ type }) => type === 'image'), 'Visual review needs the sampled frames as images')
+        if (content[0].text.startsWith('快切抽帧检查 ')) {
+          const frames = content.filter(({ type }) => type === 'text').map(({ text }) => text.match(/^快切抽帧检查 (f\d+_\d+)｜镜组 \d+｜原片时间 ([\d.]+) 秒｜目标 "(动作\d+)"$/))
+          assert.equal(frames.length * 2, content.length)
+          const reviews = frames.map(([, id, point, shot]) => {
+            const time = Number(point)
+            montageFrames.push({ shot, time })
+            return { id, status: shot === blockedShot ? blockedStatus : 'clear' }
+          })
+          yield { type: 'text-delta', text: JSON.stringify({ reviews }) }
+          yield { type: 'finish', reason: { kind: 'stop' } }
+          return
+        }
         const windows = []
         for (const item of content) {
           if (item.type !== 'text') continue
@@ -134,7 +205,7 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
   const task = () => json(join(state, 'advanced-task.json'))
   const call = (action, data) => advanced(ctx, exec, { action, workDir, data }, config)
   assert.equal(prepared.status, 'awaiting_proposal')
-  assert.deepEqual(bgm, { db: -5, gain: 10 ** (-5 / 20) })
+  assert.deepEqual(bgm, { db: -12, gain: 10 ** (-12 / 20) })
   assert.equal(dirname(workDir), outputRoot)
   assert.equal(prepared.runtime.ffmpeg, ffmpeg)
   assert.equal(prepared.runtime.ffprobe, ffprobe)
@@ -151,8 +222,10 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
 
   const dialogue = (episode, source_line_id, quote_zh, purpose) =>
     ({ kind: 'dialogue', episode, source_line_id, quote_zh, purpose, seconds: 2, visual: '待定位', transition: '硬切', audio: '完整原声' })
-  const shots = Array.from({ length: 12 }, (_, i) => ({ kind: 'montage', episode: 2, shot_id: `fixture-${i + 1}`,
-    seconds: 0.5, purpose: `合成快切${i + 1}`, visual: '待定位', transition: '音乐重音硬切', audio: '原声静音；同曲原速' }))
+  const shots = Array.from({ length: 12 }, (_, i) => ({ kind: 'montage', episode: i === 0 ? 1 : 2, shot_id: `fixture-${i + 1}`,
+    seconds: 0.5, purpose: `合成快切${i + 1}`, visual: `动作${i + 1}`, transition: '音乐重音硬切', audio: '原声静音；同曲原速',
+    anchor: i === 0 ? { source_line_id: 'E1L2', quote_zh: '现在轮到我出牌。', side: 'before' }
+      : { source_line_id: 'E2L1', quote_zh: '追上他。', side: 'before' } }))
   const proposal = { title: '合成冲突', story: '甲发现危机，乙原声反击。', base_montage_count: 6, segments: [
     dialogue(1, 'E1L1', '门后有人。', '开场铺垫'), ...shots, dialogue(1, 'E1L2', '现在轮到我出牌。', '同故事线原声高潮'),
   ] }
@@ -208,6 +281,40 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
   assert.equal(visualPrompts.length, mainPrompts, 'Reused dialogue must not extract or review frames again')
   assert.equal(speech.state.connections, 1, 'Reused dialogue must not re-transcribe either')
 
+  const missingAnchor = structuredClone(subtitleRevision)
+  delete missingAnchor.segments[1].anchor
+  await assert.rejects(call('proposal', missingAnchor), /附近台词 anchor/)
+  const montageOptions = { provider: 'fixture', model: 'vision' }
+  const rejected = await call('locate_montage', montageOptions)
+  assert.equal(rejected.status, 'incomplete')
+  assert.equal(rejected.segments.length, 11)
+  assert.match(rejected.missing[0].reason, /有字幕/)
+  assert.deepEqual(rejected.missing[0].gap, { start: 0.5, end: 3 })
+  assert.deepEqual([...new Set(montageFrames.filter(({ shot }) => shot === '动作1').map(({ time }) => time))],
+    [0.5, 0.833333, 1.166667, 1.5, 1.833333, 2.166667, 2.5, 2.833333])
+  assert.deepEqual(rejected.segments[0].montage_location.gap, { start: 0.5, end: 9 })
+  assert.equal(rejected.segments[0].montage_location.anchor.timing, 'utterance')
+  assert.equal(speech.state.connections, 1, 'The montage anchor also reuses the episode ASR cache')
+  for (const [status, reason] of [['flash', /出现闪镜、跳帧或卡帧/], ['cover', /出现封面/], ['irrelevant', /不是指定画面/]]) {
+    blockedStatus = status
+    const reviewed = montageFrames.length
+    const retry = await call('locate_montage', montageOptions)
+    assert.equal(retry.status, 'incomplete')
+    assert.match(retry.missing[0].reason, reason)
+    assert.ok(montageFrames.length > reviewed && montageFrames.slice(reviewed).every(({ shot }) => shot === '动作1'))
+  }
+  blockedShot = undefined
+  const montage = await call('locate_montage', montageOptions)
+  assert.equal(montage.status, 'complete', montage.summary)
+  assert.equal(montage.segments.length, 12)
+  assert.deepEqual(montage.segments[0].montage_location.anchor.cueIds, [1, 2])
+  assert.equal(montage.segments[0].start, 0.5)
+  assert.equal(montage.segments[0].available_end, 2.833333333, 'The range stops at the last checked sample')
+  assert.equal(montage.segments[0].montage_location.fps, 3)
+  const beforeRerun = montageFrames.length
+  assert.equal((await call('locate_montage', montageOptions)).status, 'complete')
+  assert.equal(montageFrames.length, beforeRerun, 'Unchanged accepted shots are reused')
+
   const { tracks } = await call('catalog')
   assert.equal(tracks.length, 1)
   await call('select_music', { trackId: tracks[0].trackId, reason: 'Synthetic pulse supports the test conflict.' })
@@ -223,8 +330,9 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
   const plan = { title: revision.title, story: revision.story, notes: '合成回归：按本次实际定位重排。',
     segments: subtitleRevision.segments.map((segment, i) => {
       if (segment.kind !== 'montage') return alignment.segments.find(({ segment_index }) => segment_index === i)
-      const start = (i - 1) * 0.75
-      return { ...segment, start, end: start + fastSeconds / shots.length, available_end: start + 0.7, min_duration: 0.2, volume: 0,
+      const locatedShot = montage.segments.find(({ shot_id }) => shot_id === segment.shot_id)
+      const start = locatedShot.start + (i - 1) * 0.68
+      return { ...locatedShot, start, end: start + fastSeconds / shots.length, available_end: start + 0.68, min_duration: 0.2,
         ...(i === shots.length ? { music_end: last.time } : {}) }
     }),
     audio: [{ role: 'bgm', file: beats.music.file, source_start: first.time - 2, start: 0, duration: spokenClipsSeconds + fastSeconds,
@@ -237,22 +345,36 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
   const unproven = structuredClone(plan)
   unproven.segments.at(-1).alignment.subtitle_anchor.cueIds = [9]
   await assert.rejects(call('save_plan', unproven), /与locate证据不符/)
+  const outside = structuredClone(plan)
+  outside.segments[1].available_end = 2.95 // After last sample, but still before the anchor.
+  const guessed = structuredClone(plan)
+  guessed.segments[1].start = 0.4
+  await assert.rejects(call('save_plan', outside), /未定位或超出已核验范围/)
+  await assert.rejects(call('save_plan', guessed), /未定位或超出已核验范围/)
+  assert.equal(existsSync(join(state, 'plan.json')), false)
+  allowVision = false
   // Host tool arguments are deeply frozen; save_plan must normalize a clone, not the caller's plan.
-  await call('save_plan', deepFreeze(structuredClone(plan)))
+  const saved = await call('save_plan', deepFreeze(structuredClone(plan)))
+  const beforeSync = await hash(saved.planFile)
+  await assert.rejects(call('sync', { plan: outside }), /未定位或超出已核验范围/)
+  assert.equal(await hash(saved.planFile), beforeSync, 'Unapproved boundaries cannot replace the saved plan')
   await call('sync')
   const validated = await call('validate')
+  assert.equal(montageFrames.length, beforeRerun, 'Save, sync and validate reuse the original visual evidence')
   const finalized = await json(validated.planFile)
   assert.equal(finalized.beat_sync.mode, 'hierarchical')
-  assert.equal(finalized.audio[0].volume_db, -5)
+  assert.equal(finalized.audio[0].volume_db, -12)
   assert.equal(finalized.audio[0].volume, bgm.gain)
-  assert.equal(finalized.music_policy.bgm_db, -5)
+  assert.equal(finalized.music_policy.bgm_db, -12)
   assert.deepEqual(await readdir(workDir), ['tmp'], 'Planning does not produce Word or media at the task root')
 
+  allowVision = false
   const videoOnly = await call('render')
   assert.equal(videoOnly.status, 'video_complete_draft_pending', videoOnly.summary)
-  assert.ok(videoOnly.summary.startsWith(`成片已完整解码：${videoOnly.outputPath}`), 'Report the MP4 path before any draft work')
+  assert.ok(videoOnly.summary.includes(videoOnly.outputPath), 'Report the MP4 path before any draft work')
   const renderedAt = (await stat(videoOnly.outputPath)).mtimeMs
   const render = await call('render', { jianying: true })
+  allowVision = true
   assert.equal((await stat(render.outputPath)).mtimeMs, renderedAt, 'Draft recovery does not re-render')
   assert.equal(render.status, 'complete', render.summary)
   assert.equal(render.decode_check, 'passed')
@@ -335,5 +457,7 @@ test('direct promo flow mixes SRT and automatic ASR fallback in one rendered pla
   assert.equal(asrLocated.status, 'complete', JSON.stringify(asrLocated))
   assert.equal(speech.state.connections, 3, 'Leaving the folder unset transcribes both episodes in the new task')
   assert.ok((await json(asrLocated.alignmentFile)).segments.every(({ alignment }) => alignment.asr_anchor && !alignment.subtitle_anchor))
-  assert.equal(visualPrompts.length, mainPrompts * 2, 'The ASR-first task reviews its own frames')
+  assert.equal(asrLocated.reused, 0)
+  const freshPrompts = visualPrompts.slice(mainPrompts)
+  assert.ok(freshPrompts.length >= 2 && freshPrompts.every(route => route === 'asr'), 'The ASR-first task reviews its own frames')
 })

@@ -6,9 +6,9 @@
 
 ## 内部取材与单一执行方案
 
-`proposal` 接收 `{title, story, segments, base_montage_count?}`。按预计顺序写清每段的 `episode/kind/purpose/seconds/visual/transition/audio`，对白加 `source_line_id/quote_zh`，非对白加唯一 `shot_id`。字幕与剧本语言不同时，如有可用 `.srt` 中的对应完整原句，可加 `subtitle_quote`；ASR 未匹配时可按下文从实际转写补 `asr_quote`。先读原稿，不编造已核实的画面或时间码。正式剪辑的 `proposal` 只保存内部目标，立即继续。仅「只出方案」模式写 `{...proposal,plan_only:true}` 为 `tmp/plan.json` 后结束，不定位或渲染。
+`proposal` 接收 `{title, story, segments, base_montage_count?}`。按预计顺序写清每段的 `episode/kind/purpose/seconds/visual/transition/audio`，对白加 `source_line_id/quote_zh`，非对白加唯一 `shot_id`。字幕与剧本语言不同时，如有可用 `.srt` 中的对应完整原句，可加 `subtitle_quote`；ASR 未匹配时可按下文从实际转写补 `asr_quote`。每个 `montage` 的 `visual` 写具体待找动作，`anchor` 填同集 `{source_line_id, quote_zh, side:'before'|'after', subtitle_quote?, asr_quote?}`。锚句不用出现在成片对白里，例如用「时间不早了」的 `before` 空档找说话前的看表动作。先读原稿，不编造已核实的画面或时间码。正式剪辑的 `proposal` 只保存内部目标，立即继续。仅「只出方案」模式写 `{...proposal,plan_only:true}` 为 `tmp/plan.json` 后结束，不定位或渲染。
 
-任务途中可基于真实素材删、替、增或重排。新增或更换对白用 `proposal → locate`，无需新目标的调整直接 `save_plan → sync → validate → render`。`tmp/plan.json` 保留实际剧情、镜头及顺序、源范围、音乐与片尾。渲染从此文件读取，不另写 Word。
+任务途中可基于真实素材删、替、增或重排。新增或更换对白用 `proposal → locate`，新增或更换快切目标用 `proposal → locate_montage`，无需新目标的调整直接 `save_plan → sync → validate → render`。`tmp/plan.json` 保留实际剧情、镜头及顺序、源范围、音乐与片尾。渲染从此文件读取，不另写 Word。
 
 ## 自动对白定位结果与回填
 
@@ -16,7 +16,7 @@
 
 定位目标取 `task.executionProposal ?? task.proposal`；`tmp/dialogue-alignment.json` 的 `segments` 只含已验收对白，不是最终 `plan.segments`。`segment_index` 是定位目标里的 0 起始段位，不随剪辑顺序改号。对白项原样引用，证据绑定当前目标、集数、精确引文、字幕或语音起止与完整画面边界；不得改句、裁句、借用别句证据或用手工采样替代对白定位。
 
-定位 `incomplete` 时保留诊断，可用已通过的条目并重试缺项，或换成可用内容继续。若 ASR 已取得转写但未匹配剧本台词，从返回的 `alignmentFile` 读取 `sources[].asr.transcriptFile`，找到同一句完整原文才填可选 `asr_quote`（已有 `subtitle_quote` 也可作为 ASR 同语提示，不是字幕证据）；直接 `proposal → locate` 复用转写缓存，不手填时间。`force:true` 才整体重跑；已通过的对白直接复用。`montage/picture/continuation` 不抽帧、不填 `visual_review`，按剧本与已定位素材选取。
+定位 `incomplete` 时保留诊断，可用已通过的条目并重试缺项，或换成可用内容继续。若 ASR 已取得转写但未匹配剧本台词，从返回的 `alignmentFile` 读取 `sources[].asr.transcriptFile`，找到同一句完整原文才填可选 `asr_quote`（已有 `subtitle_quote` 也可作为 ASR 同语提示，不是字幕证据）；直接 `proposal → locate` 复用转写缓存，不手填时间。`force:true` 才整体重跑；已通过的对白直接复用。`locate` 只检查对白；接着调用 `locate_montage`，优先用 SRT、缺失或未匹配时用 ASR 查锚句，再按指定侧在紧邻无对白的空档以每秒 3 帧定位动作。返回的 `segments` 只含通过的快切，并携带 `montage_location.anchor/gap/ranges/fps`；`missing` 说明未找到的目标。
 
 ## 执行用 plan.json
 
@@ -65,7 +65,7 @@
 
 上例是单条 ASR 锚点的对白。每条对白按实际来源只带一种锚点；字幕命中用 `alignment.subtitle_anchor`，包含同集 `file`、`sha256`、`cueIds`、`start/end/text/quote/score` 和 `timing: 'cue'`。同集对白可混用两种来源。直接引用本任务 `locate` 已验收的完整条目和 `alignment.sampling_file`，保留实际返回的 `subtitle_quote` 或 `asr_quote`（如果有）。不能用示例时间码、伪造清单，或把采样成功当作验收。跨窗证据须连续覆盖完整 `[start,end]`。
 
-`montage/picture/continuation` 不再需要画面证据：不填 `visual_review`、不引用采样清单，按剧本与已定位素材选取，使用唯一 `shot_id` 并填写 `purpose/visual/transition/audio`。`continuation` 保留完整原声动作且 `volume:1`，`picture` 和 `montage` 原声为 0。实际使用的原声台词须通过 `proposal → locate`，不伪装成非对白。
+`montage/picture/continuation` 不填对白的 `alignment` 或 `visual_review`，使用唯一 `shot_id` 并填写 `purpose/visual/transition/audio`。`montage` 必须使用已定位的 `shot_id`，而且源范围及 `available_end` 均在 `locate_montage` 返回的某一个连续通过范围内；不要跨过不合格样本把两个范围合在一起。`continuation` 保留完整原声动作且 `volume:1`，`picture` 和 `montage` 原声为 0。实际使用的原声台词须通过 `proposal → locate`，不伪装成非对白。
 
 蒙太奇用 `kind: montage, volume: 0`，只安排一组连续快切，所有快切镜头累计为 5–10 秒，已有方案时使用原数量两倍的不同画面，记录原数量、新数量、画面内容与选择理由；不靠重复或拆分同一连续画面充数。允许在选定快切区间内主动叠加短黑屏及同步静音以强化音乐卡点，黑屏计入快切总长（5–10 秒），不增加时间线长度；黑屏本身和被全黑覆盖的段均不计作有效画面镜头。快切后立即接同一故事线中最激烈的原声剧情高潮：有台词用 `dialogue`，无台词的完整原声动作片段可用 `continuation`，不能直接定格或接静音占位画面。程序检查时长与原声衔接，高潮强度由 AI 结合实际执行剧情与画面验收。源视频的硬字幕会保留；静音快切不冒充完整原声对白。
 
@@ -73,9 +73,9 @@
 
 配乐项：`file` 是已有本地音频绝对路径；`start` 是成片时间；`duration` 为长度；`source_start` 默认 0；旧式线性 `volume` 默认 1；`fade_in/fade_out` 是淡化秒数；`name` 为轨道显示名。原片自带音乐不会被自动分离。配乐与片尾音效保留为剪映独立音轨，可继续调节。
 
-音轨必须标角色。`role: bgm` 的 `volume_db` 统一为 −5，线性 `volume` 为 `10 ** (-5 / 20)`；插件保存、同步及渲染时都会归一化，不接受用户音量覆盖。这是轨道基础增益，不是整片响度或峰值；淡化与总线防削波限幅另计。`role: sfx` 保留自己的 `volume` 或 `volume_db`。
+音轨必须标角色。`role: bgm` 的 `volume_db` 统一为 −12，线性 `volume` 为 `10 ** (-12 / 20)`；插件保存、同步及渲染时都会归一化，不接受用户音量覆盖。这是轨道基础增益，不是整片响度或峰值；淡化与总线防削波限幅另计。`role: sfx` 保留自己的 `volume` 或 `volume_db`。
 
-`music_policy` 使用 `single_song: true`、`song_sha256: <beats.json的file_sha256>`、`bgm_db: -5`。执行器检查所有 BGM 的文件内容属于同一首歌；不同复制路径可具有同一指纹。原声段已有的片内音乐不自动分离。
+`music_policy` 使用 `single_song: true`、`song_sha256: <beats.json的file_sha256>`、`bgm_db: -12`。执行器检查所有 BGM 的文件内容属于同一首歌；不同复制路径可具有同一指纹。原声段已有的片内音乐不自动分离。
 
 正文使用同一首原速 BGM；固定片尾时，BGM 按 DSH `finishMusicBefore` 在片尾音效实际起点 E−T/2 秒前淡出并截止，仍使用本任务基础增益。原声完整保留到 E，片尾指定音效保持音量 1、无淡入淡出并完整播放。`preserve_audio: true` 的持续到全片末尾约束不适用于固定片尾交接，执行时省略或设为 `false`；原音乐文件保留，黑屏静音只处理已授权范围。
 
@@ -94,10 +94,10 @@
 - 音乐可从任意可用 `source_start` 开始。搜索同曲选段/起点时，先比较能命中的大节奏数量，再比较总命中数，不能让更多小拍挤掉大重音。成片事件时间为 `源事件 - source_start + audio.start`。修改音乐起点后重新同步，最终 MP4 与草稿使用同一映射。
 - 在重要快切片段写 `music_end`，值为 `beats.json` 中真实事件的源音频绝对秒数，表示该片段结束后的落点。最后快切须标重要终点；其余镜头由优化器尽量匹配真实事件，不再只允许少量必卡点。
 - 新分析默认使用 `hierarchical`：优先命中大重音，再增加真实小拍与起音命中。局部音乐越密，尽量用更多短镜头，例如约 0.25 秒一镜；相对舒缓处可约 0.5 秒一镜，示例不是固定网格。已有方案时镜头数由 N 增至 2N，总快切仍为 5–10 秒；不足时补充不同画面或重新选段，无法兼顾时说明限制，不降低目标数量或放宽时长。通过选镜数量与 `rhythm_weight` 设置相对长短，`min_duration` 默认 0.2 秒以保持可读性；不强行追每个小拍，无法命中时可自然切。
-- `end` 是已确认画面的可用终点；`available_end` 可指定看帧核实的更长终点。所选快切区间为 5–10 秒，画面不足时补充不同镜头，或重新选取 5–10 秒的音乐区间、更新 `music_cues.fast_section` 与最后 `music_end` 后重新同步；不循环旧镜头，不在快切中换歌，不用变速、克隆末帧或黑场凑时长。不能改了音乐选段却沿用旧卡点。
+- `end` 是拟采用的源终点；`available_end` 可提供卡点可用的更长终点。`sync` 改变实际 `[start,end)` 时，仅校验它是否仍在同一个已定位通过的连续范围内，不再次抽帧；不允许 `available_end` 超出该范围。所选快切区间为 5–10 秒，画面不足时补充不同镜头，或重新选取 5–10 秒的音乐区间、更新 `music_cues.fast_section` 与最后 `music_end` 后重新同步；不循环旧镜头，不在快切中换歌，不用变速、克隆末帧或黑场凑时长。不能改了音乐选段却沿用旧卡点。
 - 对每个累计绝对边界按 30 fps 量化，再相减取段长；不能每段独立取整后相加。正文快切使用硬切，片尾使用规定的原生炫光；显式指定拼接段长，并将视频首个 PTS 归零，避免转场或 AAC 填充改变画面与音乐的相对时间。
 - `beat_sync.mode` 为 `hierarchical`，`cuts` 记录实际命中的全部切点与 `level`，`major_hits` 记录大重音命中，`free_cut_count` 记录未命中的自然切点。验收优先报告大节奏覆盖，再报告总命中；每个声称命中的点都需核对真实编码和草稿时间。旧 `music-first`/全部卡点清单仍可读取。
-- 读取旧方案的连续配乐片段时要保持源时间连续，并将 `beat_sync.audio_index` 更新为覆盖快切的音乐段。新渲染统一为 −5 dB；仅补做旧成片的草稿时沿用该片实际混入的增益。固定片尾交接按 `finishMusicBefore` 执行，BGM 不延续到片尾声效上；完整片尾音效结束前不得结束照片定格。
+- 读取旧方案的连续配乐片段时要保持源时间连续，并将 `beat_sync.audio_index` 更新为覆盖快切的音乐段。新渲染统一为 −12 dB；仅补做旧成片的草稿时沿用该片实际混入的增益。固定片尾交接按 `finishMusicBefore` 执行，BGM 不延续到片尾声效上；完整片尾音效结束前不得结束照片定格。
 - 对白不为卡点修改。可变快切时长改变后，后续对白在成片中整体平移，源视频中的正文范围保持不变。 输入音轨时长按同步前的时间线填写；`sync` 会调整覆盖快切结尾的音轨时长（含所选 BGM），并移动后续音轨，保持高潮段及片尾配乐衔接。
 - 不能只看方案数学结果：检查实际编码与草稿时间线；声称命中的事件误差不超过 1 帧。尽可能增加命中，但不破坏大节奏、完整对白或动作可读性；未命中处按视觉连贯验收。没有听音能力时仍须明确听感未验收。
 
@@ -123,7 +123,7 @@
 
 - `《剧名》成片.mp4`：统一 1080×1920、30 fps、有原声音轨的成片；旧任务沿用 `宣传片.mp4`。方案及以下执行产物均在新任务目录的 `tmp/` 下。
 - `tmp/plan.json`：唯一方案，驱动渲染与草稿。成片时补齐实际片尾数据；以前生成的任何文档保持原样。
-- `tmp/render-result.json`：最终成片完整解码、实际总长、方案指纹及 DSH ending 描述，包含 PNG、完整 WAV、原生转场资源、正文 E 与源帧映射；正文中间结果另存，不能冒充最终验收。
+- `tmp/render-result.json`：最终成片完整解码、实际总长、方案指纹及 DSH ending 描述，包含 PNG、完整 WAV、原生转场资源、正文 E 与源帧映射。恢复时核对方案指纹，正文中间结果不能冒充最终成片。
 - `tmp/dialogue-alignment.json`：逐台词记录实际使用的字幕或语音锚点及局部看帧的验收结果，可混合两种来源；其中 `segments` 只含已验收对白，不代替非对白视觉验收或整个执行计划。
 - `sampling_file`：本任务持久化采样清单，保留真实窗口、帧率与证据，只用于对白；清单不放在可清理的 `tmp/work/`。
 - `tmp/beats.json`：实际配乐的拍点分析，随最终方案保留。

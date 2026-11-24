@@ -89,6 +89,16 @@ test('连续窗跨同集文件保留原顺序、边界一帧和静音尾；可�
   const args = { dramaDir, exportDir, draftRoot }
   const start = 12 - 1 / 30
   const end = start + 2
+  let picks = 0
+  const ctx = { get(key) {
+    if (key === 'agentDefaultModel') return { currentSelection: () => ({ provider: 'mock', model: 'mock' }) }
+    if (key === 'llm') return {
+      async prepareCall() {
+        picks += 1
+        return { async *stream() { yield { type: 'text-delta', text: '{"episode":1,"lineIds":[1,2],"reason":"揭穿谎言","match":"strong"}' } } }
+      },
+    }
+  } }
   const clip = await cutContiguous({ args: { ...args, episode: 1, start, end }, config })
   assert.equal(clip.result.sourceDuration, 16)
   assert.equal(clip.video.audioSegments, 1)
@@ -130,13 +140,6 @@ test('连续窗跨同集文件保留原顺序、边界一帧和静音尾；可�
     { start: 0.2, end: 3, text: lines[0], words: [{ start: 1.2, end: 2.5, text: lines[0] }] },
     { start: 8, end: 11.5, text: lines[1], words: [{ start: 8.8, end: 10.8, text: lines[1] }] },
   ])
-  let picks = 0
-  const ctx = { get: (key) => key === 'agentDefaultModel' ? { currentSelection: () => ({ provider: 'mock', model: 'mock' }) } : {
-    async prepareCall() {
-      picks += 1
-      return { async *stream() { yield { type: 'text-delta', text: '{"episode":1,"lineIds":[1,2],"reason":"揭穿谎言","match":"strong"}' } } }
-    },
-  } }
   const progress = []
   const planned = await cutContiguous({ ctx, config, args: { ...args, scriptPath, direction: '揭穿谎言', verify: false }, onProgress: (stage) => progress.push(stage) })
   assert.deepEqual(progress, ['survey', 'pick', 'asr', 'draft', 'render'])

@@ -61,7 +61,7 @@ const CUT_PARAMETERS = {
 const ADVANCED_ACTIONS = ADV.action.enum.filter(action => action !== 'prepare')
 // The previous Word-pending status still means an existing MP4 can be recovered without re-rendering.
 const PENDING_VIDEO = ['video_complete_word_pending', 'video_complete_draft_pending']
-const WIP = { locate: 'asr', select_music: 'pick', beats: 'pick', mute: 'pick', save_plan: 'pick', sync: 'pick', validate: 'pick', render: 'render', export: 'draft' }
+const WIP = { locate: 'asr', locate_montage: 'pick', select_music: 'pick', beats: 'pick', mute: 'pick', save_plan: 'pick', sync: 'pick', validate: 'pick', render: 'render', export: 'draft' }
 const RUNTIME_SKILL = 'duanju-slice-runtime'
 const RUNTIME_SKILL_DIR = new URL(`./skills/${RUNTIME_SKILL}/`, import.meta.url)
 
@@ -115,7 +115,7 @@ export function apply(ctx, config = {}) {
       const intent = { direction: settings.direction, preferredEpisode: args.episode, ...revision }
       await rememberAdvanced(id, { ...prepared, planOnly, intent })
       if (!planOnly) await recordProgress(ctx, id, 'pick')
-      return { ...prepared, planOnly, intent, summary: `${prepared.summary}\n读取 duanju_slice_advanced(action:guide,topic:operations) 和 indexFile，按剧情方向提交 proposal。${planOnly ? '交付返回的 plan.json 后结束，不剪辑。' : 'proposal 仅记录内部取材目标；同一轮直接 locate（字幕优先，缺失或未匹配自动用语音识别，不询问用户；只对白抽帧核验动作，已通过段不重查），然后按 guide 卡点并保存 plan.json，先 render 出 MP4 并回报路径，再按需 export 导入草稿。'}` }
+      return { ...prepared, planOnly, intent, summary: `${prepared.summary}\n读取 duanju_slice_advanced(action:guide,topic:operations) 和 indexFile，按剧情方向提交 proposal。${planOnly ? '交付返回的 plan.json 后结束，不剪辑。' : 'proposal 仅记录内部取材目标；同一轮直接 locate 核验对白（字幕优先，缺失或未匹配自动用语音识别；5 fps，已通过段不重查），再用 locate_montage 在附近台词紧邻的无对白空档中每秒抽3帧，核验目标动作及字幕、跳帧和封面，然后按 guide 卡点并保存 plan.json，由 render 生成并校验 MP4，再按需 export 导入草稿。'}` }
     } catch (error) {
       if (!planOnly) await recordProgress(ctx, id, 'error', error.message)
       throw error
@@ -137,7 +137,7 @@ export function apply(ctx, config = {}) {
       const progress = WIP[args.action]
       if (progress && !pending.planOnly) await recordProgress(ctx, id, progress)
       const runtime = options()
-      const result = await advanced(ctx, exec, { action, workDir: pending.workDir, data }, action === 'locate' ? { ...runtime, getAsrApiKey } : runtime)
+      const result = await advanced(ctx, exec, { action, workDir: pending.workDir, data }, ['locate', 'locate_montage'].includes(action) ? { ...runtime, getAsrApiKey } : runtime)
       if (action === 'render' && result.status === 'complete') {
         const clips = result.clips
         const opening = clips[0]
@@ -182,7 +182,7 @@ export function apply(ctx, config = {}) {
       },
     }))
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_cut', description: '按会话模式开始剪辑。切片（slice）从同一集直接裁一段原声连续片段，交付 MP4 和可用的剪映草稿。混剪（mix）优先用分集字幕定位，字幕不可用或未匹配完整台词时自动使用现有语音识别，不停下来询问用户，只对白抽帧核验动作且已通过段不重查。混剪保存并按 plan.json 剪辑，先交付 MP4，再按需导出可编辑剪映草稿；两种模式都不生成 Word。',
+      name: 'duanju_slice_cut', description: '按会话模式开始剪辑。切片（slice）从同一集直接裁一段原声连续片段，交付 MP4 和可用的剪映草稿。混剪（mix）优先用分集字幕定位，字幕不可用或未匹配完整台词时自动使用现有语音识别，不停下来询问用户，对白抽帧核验动作且已通过段不重查；快切以附近台词为锚，在紧邻的无对白空档内每秒抽3帧，用同一组样本确认目标动作并排除字幕、闪镜、跳帧、卡帧和封面；混剪保存并按 plan.json 剪辑，成片不做逐帧视觉验收。不生成 Word。',
       parameters: CUT_PARAMETERS, output: output('连续切片成片或混剪任务及执行步骤'),
       execute: (args, exec) => inSession(exec, id => start(id, args, exec)),
     }))
@@ -197,7 +197,7 @@ export function apply(ctx, config = {}) {
       execute: (args, exec) => args.action === 'guide' ? advanced(ctx, exec, args, baseOptions) : inSession(exec, id => advance(id, args, exec)),
     }))
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_revise', description: '修订当前选中的版本，保留旧版。切片在同一集按相对该版起点的秒数重新裁切；混剪按剧情、节奏或取景重做 plan.json，不截断完整台词、不改原声或固定片尾音量，BGM 固定 −5 dB。',
+      name: 'duanju_slice_revise', description: '修订当前选中的版本，保留旧版。切片在同一集按相对该版起点的秒数重新裁切；混剪按剧情、节奏或取景重做 plan.json，不截断完整台词、不改原声或固定片尾音量，BGM 固定 −12 dB。',
       parameters: { type: 'object', properties: {
         note: { type: 'string', description: '这次修订的目标' },
         start: { type: 'number', description: '切片：相对该版起点的开始秒数，可为负；混剪：开头期望时间，只作为目标' },

@@ -33,7 +33,7 @@ python -B -X utf8 <PLUGIN_ROOT>/advanced/runner.py --request <JSON请求文件>
 | `prepare` | 可选 `sources:[{number,files}]`，由宿主传入自然排序的绝对路径 | 新建 `index.json`，与 DOCX 配集并记录全部原片指纹；多段集仅探测、不会生成合并文件 |
 | `stage_episodes` | `episodes:[正整数,...]` | 正式任务按需校验并合并多段集，更新索引，返回 `{index,staged}` |
 | `beats` | `audio` 绝对只读音频路径；可选 `output`（任务内路径） | 默认新建 `beats-<uuid>.json`；`analysis/tempo/beats/file_sha256/duration` |
-| `sync` | `plan` 完整对象，`beats` 本任务正式分析绝对路径；`audioIndex=0` | `plan/cuts/major_hits/max_error_seconds`；仅此动作允许原子更新固定 `plan.json` |
+| `sync` | `plan` 完整对象，`beats` 本任务正式分析绝对路径；`audioIndex=0` | `synced_plan/cuts/major_hits/max_error_seconds`；宿主确认快切没有超出已核验范围后才保存 `plan.json` |
 | `validate` | 可选 `plan` 完整对象，否则读 `plan.json` | `duration/planned_duration/frames/fps/segments/encoded_boundaries/body_only:true/final_completed:false` |
 | `render` | `{}`，固定读取 `plan.json/index.json` | 按方案指纹新建隔离正文 MP4/结果；同指纹已有两文件完全匹配时只读 `resumed:true`，不重编码或覆盖旧文件；见下节 |
 | `clean` | `{}` | 仅删除 promo 标记的 `work/`；`cleaned/assets_preserved:true` |
@@ -45,7 +45,7 @@ Python runner 不再提供 `sample`；只有 `locate` 会对白抽帧，已通�
 ## Node 宿主动作：内部取材与执行调整
 
 - 正式剪辑的 `proposal` 保存 `{title,story,segments,base_montage_count?}` 为内部取材目标，返回 `editing`，随即 `locate`；显式只出方案时写标为 `plan_only` 的 `plan.json` 并终止，不定位或渲染。
-- 可按真实素材删、替、增、重排。新增或更换对白提交 `proposal → locate`；使用已验收的对白条目，不改其边界。非对白按剧本与已定位素材直接选取，不抽帧、不填 `visual_review`。`save_plan/sync` 可用 `plan.story` 记录实际剧情。变更后重新同步校验，50 秒、单首原速 BGM、一组 5–10 秒快切、完整原声及片尾等规格不变。
+- 可按真实素材删、替、增、重排。新增或更换对白提交 `proposal → locate`；使用已验收的对白条目，不改其边界。快切通过 `proposal → locate_montage` 在锚句紧邻无对白的空档以每秒 3 帧定位动作，并用同一组帧检查字幕、跳帧、闪镜、卡帧和封面。后续只校验 `start/end/available_end` 未超出已通过的连续区间；`picture/continuation` 不做该检查。`save_plan/sync` 可用 `plan.story` 记录实际剧情。变更后重新同步校验，50 秒、单首原速 BGM、一组 5–10 秒快切、完整原声及片尾等规格不变。
 - `save_plan/sync/validate` 在同一个 `tmp/plan.json` 保存方案；`render` 从磁盘读取，不接受另一份内联计划。没有 Word 输出；若草稿登记失败，保留成片并重试 `export`，不重剪。
 - 未成片时可因实际问题再次 `select_music`：同曲幂等，不同曲保留旧素材副本，改用新的单首歌曲后重新 `beats/sync/validate`，不能把多首叠加为正文。`mute` 每次从 `originalFile` 重建新副本，不累积旧静音区间，保留原曲并重分析/同步。
 - 技术错误由 AI 继续修复重试，不能吞错假成功；无可用素材、取消或权限故障须保留真实诊断，不承诺必然成功，不绕过安全和源保护。
@@ -75,7 +75,7 @@ Python runner 不再提供 `sample`；只有 `locate` 会对白抽帧，已通�
 - 完整原声段若量化会缩短已核实范围，明确失败并要求看帧补验可用帧边界，不自动截对白/动作或延长源范围。必要向上不足一帧时只读到已验收 `end`，用正常 fps 向上边缘采样保留源内画面，原声完整后仅零填充至帧边界，记录 `source_mapping.output_frame_padding`。若实际源帧不足以产生要求帧数，失败而不是克隆末帧凑素材。静音段允许量化到较短源内范围，记录实际源终点。
 - 每段视频首 PTS=0、无 B 帧，concat 显式使用实际帧长。各段原声另以恰好每视频帧 1600 个 48kHz PCM 样本拼接，避免逐段 AAC priming 累积；最终 AAC 只编码一次。正文完整解码并验证帧数/时长/PTS。
 - Python runner 的 `render` 永远只正文：`body_only:true/final_completed:false/requires_native_ending:true`。拒绝 `freeze/flash/export`，不把正文中间片冒充成片；旧 `promo.export` 函数也已主动禁用，明确报“最终草稿必须通过插件原生导出，不加载NarratoAI业务模块”，已移除 `app` 与 `sys.path` 外部业务导入。最终强制原生片尾、完整 SFX 与草稿由安装包 Node `lib/promo/ending.js`、`lib/promo/jianying.js` 负责。
-- Node 按实际 `duration=E` 在正文渲染前用 `finishMusicBefore` 将 BGM 裁到 `E−T/2`，回填 `plan.json`；T 为片尾高光秒数（默认 0.8）。`music_policy.bgm_db` 和 BGM 轨的 `volume_db` 统一为 −5，线性 `volume` 为 `10 ** (-5 / 20)`。仅补导出旧成片时，草稿沿用该片实际渲染的音量。正文已混的 BGM 与 SFX 不重复混合。
+- Node 按实际 `duration=E` 在正文渲染前用 `finishMusicBefore` 将 BGM 裁到 `E−T/2`，回填 `plan.json`；T 为片尾高光秒数（默认 0.8）。`music_policy.bgm_db` 和 BGM 轨的 `volume_db` 统一为 −12，线性 `volume` 为 `10 ** (-12 / 20)`。仅补导出旧成片时，草稿沿用该片实际渲染的音量。正文已混的 BGM 与 SFX 不重复混合。
 
 已有正文恢复：同一方案指纹的已有 MP4/结果必须都是本任务普通文件；核对 `plan_sha256`、当前 index 的源文件大小/mtime 身份、完整编码清单与源映射、正式 assets、音量、严格完整解码、实际帧数/PTS/尺寸/时长，全部一致才只读返回缓存结果加 `resumed:true`。同一产物任一缺失或不匹配均明确失败并保留诊断，不能伪装恢复或覆盖它。执行计划调整、指纹不同时使用新的隔离正文输出，新编码返回 `resumed:false`；不覆盖、不重编码旧正文，也不动旧成片或源素材。AI 处理可修复错误后继续重试，不能清掉错误或借恢复冒称完成。
 

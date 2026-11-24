@@ -73,6 +73,7 @@ test('注册面：同一剪辑工具区分混剪与切片，密钥走独立且�
   const staged = tools.get('duanju_slice_advanced')
   assert.ok(!staged.parameters.properties.action.enum.includes('confirm'))
   assert.ok(staged.parameters.properties.action.enum.includes('proposal'))
+  assert.ok(staged.parameters.properties.action.enum.includes('locate_montage'))
   assert.ok(staged.parameters.properties.action.enum.includes('render'))
   assert.ok(!staged.parameters.properties.action.enum.includes('prepare'))
   assert.match((await staged.execute({ action: 'guide' }, {})).summary, /duanju_slice_cut/)

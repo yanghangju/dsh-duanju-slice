@@ -30,9 +30,9 @@
 
 1. 由内置 runner 的 `body-render-result.json.encoded_segments` 构建有序 `clips`：每项含 `file/episode/start/end`，其本地范围、音量与帧长以实际编码返回为准，不再用未量化的方案段长重建。保留每段 `source_mapping` 的原集与已核实源范围。不要先附加旧 `freeze`。E 严格等于正文总帧数/30（草稿微秒仅按累计边界转换），调用 `ending.js` 的 `freezeSource(clips)` 核对 E−1.5 的跨段映射。
 2. 调用 `prepareEnding(ffmpeg, { source, transition, clips, tmp: 正式assets目录, targetStart: E, transitionSeconds: 本任务T })`，取得 ending 描述及完整音效 L；验证 E+ending.duration≤50 秒。保存返回的 `freeze/transition/sound`，不另造音效时长或资源数据。
-3. 将 BGM 映射为 `file/sourceStart/targetStart/duration/sourceDuration/volume/fadeIn/fadeOut`，`volume` 固定为 −5 dB 的线性增益 `10 ** (-5 / 20)`。用 `finishMusicBefore(segments, ending.sound.targetStart)` 对齐正文与草稿的源范围、时长和淡化。末段淡出参考 0.5 秒，短段最多占其一半，淡入淡出不重叠。
+3. 将 BGM 映射为 `file/sourceStart/targetStart/duration/sourceDuration/volume/fadeIn/fadeOut`，`volume` 固定为 −12 dB 的线性增益 `10 ** (-12 / 20)`。用 `finishMusicBefore(segments, ending.sound.targetStart)` 对齐正文与草稿的源范围、时长和淡化。末段淡出参考 0.5 秒，短段最多占其一半，淡入淡出不重叠。
 4. 用本 Skill 的正文渲染器保留完整对白、快切静音和黑屏处理，输出正文中间片。已烘焙黑屏或画幅处理的正式分段，导出 clips 应引用处理后的素材及其本地源范围；以同一最终 clips 重新计算 `ending.freeze`，保证照片映射与草稿一致，同时保留原集与原时间的追溯记录。
-5. 调用 `renderEnding` 抽取 PNG，再调用 `appendEnding` 追加照片并使用原生炫光资源的真实序列、方向与 RGB 混合规则导出画面。调用 `lib/media.js` 的 `mixBgm`，以 `[ending.sound]` 加入完整独立片尾音效，`duration=E+ending.duration`、`originalDuration=E`；正文已混好 BGM 时不重复加入它。完整解码并核对最终媒体时长。
+5. 调用 `renderEnding` 抽取 PNG，再调用 `appendEnding` 追加照片并使用原生炫光资源的真实序列、方向与 RGB 混合规则导出画面。调用 `lib/media.js` 的 `mixBgm`，以 `[ending.sound]` 加入完整独立片尾音效，`duration=E+ending.duration`、`originalDuration=E`；正文已混好 BGM 时不重复加入它。完整解码并核对最终媒体时长、尺寸和音轨；不再逐帧视觉检查。
 6. 按用户选择的草稿根目录，调用 `lib/jianying.js` 的 `importToJianying({ videoPath: 最终成片, clips, music: 第3步的实际BGM片段, ending, size: {width:1080,height:1920}, name, draftRoot, ffmpeg })`。先备份原根索引；保留独立分段，不把整条最终视频当作唯一素材导入。原生转场挂在末个正文段，后接 `type: photo` 的「定格」，片尾声效为独立音轨。
 7. DSH 的原声默认处理不同于本 Skill：导入后按 `plan.json` 逐段还原 `volume/last_nonzero_volume`，快切为 0，原声沿用计划，已烘焙音量的正式分段用 1。若原方案另有 SFX，保留其独立音轨，不塞进只允许不重叠 BGM 的 `music` 数组。保留已有草稿与原素材，不重复登记；验收成功前不报告完成。
 

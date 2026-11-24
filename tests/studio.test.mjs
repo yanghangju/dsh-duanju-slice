@@ -120,7 +120,7 @@ test('progress and output survive reopening without losing concurrent settings',
     assert.equal((await api.editingSession('s1')).lastResult.version, 1, 'retry neither duplicates a result nor resets version selection')
     const editingContext = await api.editingContext('s1')
     assert.match(editingContext, /持续剪辑会话/)
-    assert.match(editingContext, /BGM 固定 −5 dB/)
+    assert.match(editingContext, /BGM 固定 −12 dB/)
     assert.match(editingContext, /用 duanju_slice_revise 直接开始剪新版本/)
     assert.match(editingContext, /仅请求出方案时用 duanju_slice_plan，只交 plan\.json，不定位或剪辑/)
     assert.equal(await api.editingContext('another-session'), '')

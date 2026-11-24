@@ -389,9 +389,8 @@ def execute(request):
             if file != absolute(analysis.get("file"), "beats.file") or hashlib.sha256(file.read_bytes()).hexdigest() != analysis.get("file_sha256"):
                 raise ValueError("音乐与拍点分析不一致，请重新beats")
             result = music.sync_montage(plan, analysis, audio_index)
-            # Sync may be iterated before final validation; no unrelated file is replaceable.
-            write_json(plan_path, result, replace=True)
-            return {"plan": str(plan_path), "cuts": len(result["beat_sync"]["cuts"]),
+            # The Host checks the adjusted picture ranges before publishing the plan.
+            return {"synced_plan": result, "cuts": len(result["beat_sync"]["cuts"]),
                     "major_hits": result["beat_sync"]["major_hits"],
                     "max_error_seconds": result["beat_sync"]["max_error_seconds"]}
         plan = data.get("plan") if action == "validate" and "plan" in data else promo.load_json(plan_path)
