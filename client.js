@@ -12,7 +12,7 @@ window.__ModuleLoader__.load({
     const defaults = normalize({});
     const dictionaries = {
       zh: {
-        'task.current': '当前会话', 'task.close': '收起会话列表', 'sessions.list': '会话列表', title: '切片工作台', sessions: '剪辑会话', 'sessions.new': '新建会话', 'sessions.empty': '还没有剪辑会话',
+        'task.current': '当前会话', 'task.close': '收起会话列表', 'sessions.list': '会话列表', title: '自动剪辑工作台', sessions: '剪辑会话', 'sessions.new': '新建会话', 'sessions.empty': '还没有剪辑会话',
         'sessions.rename': '重命名', 'sessions.remove': '移出列表', 'sessions.removeAccept': '移出列表',
         'sessions.removeConfirm': '将这条任务移出列表？对话记录、成片和草稿都会保留。',
         'sessions.noResult': '等待配置', 'sessions.done': '第 {episode} 集 · {start}–{end}',
@@ -80,7 +80,7 @@ window.__ModuleLoader__.load({
         prompt: '请按这些设置调用 duanju_slice_cut，生成当前会话的一个新版本：\n```json\n{parameters}\n```\n保留已有版本，只制作一条，不生成 Word。完成后简短说明集号、时间码和交付文件位置。',
       },
       en: {
-        'task.current': 'Current conversation', 'task.close': 'Collapse conversation list', 'sessions.list': 'Conversations', title: 'Slice studio', sessions: 'Editing conversations', 'sessions.new': 'New conversation', 'sessions.empty': 'No conversations yet', 'sessions.rename': 'Rename', 'sessions.remove': 'Remove from list', 'sessions.removeAccept': 'Remove', 'sessions.removeConfirm': 'Remove this task from the list? Its conversation, video and draft will be kept.', 'sessions.noResult': 'Needs setup', 'sessions.done': 'Episode {episode} · {start}–{end}',
+        'task.current': 'Current conversation', 'task.close': 'Collapse conversation list', 'sessions.list': 'Conversations', title: 'Automated editing studio', sessions: 'Editing conversations', 'sessions.new': 'New conversation', 'sessions.empty': 'No conversations yet', 'sessions.rename': 'Rename', 'sessions.remove': 'Remove from list', 'sessions.removeAccept': 'Remove', 'sessions.removeConfirm': 'Remove this task from the list? Its conversation, video and draft will be kept.', 'sessions.noResult': 'Needs setup', 'sessions.done': 'Episode {episode} · {start}–{end}',
         'ago.now': 'now', 'ago.minute': '{n}m', 'ago.hour': '{n}h', 'ago.day': '{n}d',
         scriptPath: 'Script DOCX', dramaDir: 'Drama folder', subtitleDir: 'Subtitle folder (optional)', exportDir: 'Export folder', direction: 'Slice direction',
         'empty.scriptPath': 'Choose a script', 'empty.dramaDir': 'Choose the drama folder', 'empty.subtitleDir': 'Choose the subtitle folder', 'empty.exportDir': 'Choose where to save the video',
@@ -231,8 +231,8 @@ window.__ModuleLoader__.load({
 @container studio (max-width:850px){.wb-sessions{position:absolute;inset:0 auto 0 0;z-index:21;width:min(260px,calc(100% - 40px));box-shadow:12px 0 30px #00000012}.wb-sessions-scrim{position:absolute;inset:0;z-index:20;display:block;border:0;background:#10182733}}
 .wb-bar{display:flex;flex:none;align-items:center;justify-content:space-between;gap:12px;min-height:68px;padding:16px 28px;border-bottom:1px solid var(--wb-line)}
 .wb-brand{display:flex;align-items:center;gap:10px;min-width:0}
-.wb-brand>svg{color:var(--wb-accent)}
-.wb-title{font-size:16px;font-weight:600;letter-spacing:-.3px;white-space:nowrap}
+.wb-brand>svg{flex:none;color:var(--wb-accent)}
+.wb-title{font-size:16px;font-weight:600;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wb-bar-right{display:flex;align-items:center;gap:16px}
 .wb-state{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:11px;color:var(--wb-ink3)}
 .wb-state[data-state="error"]{color:var(--wb-error)}

@@ -1,7 +1,7 @@
 {
   "name": "dsh-duanju-slice",
   "version": "0.3.5",
-  "description": "短剧切片工作台：支持跨集卡点混剪与单集连续切片，交付 MP4 和剪映草稿。",
+  "description": "自动剪辑工作台：支持跨集卡点混剪与单集连续切片，交付 MP4 和剪映草稿。",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -28,6 +28,7 @@
     "assets/ending/",
     "licenses/",
     "cordis.patch.yml",
+    "locale/*.json",
     "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download,contiguous,asr-credentials,release-update}.*",
     "README.md"
   ],
@@ -54,6 +55,7 @@
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
     "./assets/*": "./assets/*",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"

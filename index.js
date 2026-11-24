@@ -1,4 +1,4 @@
-// 短剧切片工作台：Promo 混剪和单集连续切片。
+// 自动剪辑工作台：Promo 混剪和单集连续切片。
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -174,7 +174,7 @@ export function apply(ctx, config = {}) {
     const registered = [installEditingContext(ctx)]
     registered.push(ctx.skills.register({
       name: RUNTIME_SKILL,
-      description: '在切片工作台发来环境配置请求时，检查、补齐并验证 Python、FFmpeg、FFprobe 和默认曲库。',
+      description: '在自动剪辑工作台发来环境配置请求时，检查、补齐并验证 Python、FFmpeg、FFprobe 和默认曲库。',
       source: 'runtime',
       content: readFileSync(new URL('SKILL.md', RUNTIME_SKILL_DIR), 'utf8'),
       resourceBase: { kind: 'directory', path: fileURLToPath(RUNTIME_SKILL_DIR) },
@@ -238,13 +238,13 @@ export function apply(ctx, config = {}) {
       async execute(args, exec) {
         if (args.version != null) await perform(ctx, { action: 'select-result', version: args.version }, exec)
         const entry = await editingSession(exec?.agent?.id)
-        assert(entry, '当前会话尚未打开切片工作台')
+        assert(entry, '当前会话尚未打开自动剪辑工作台')
         return jsonSafe({ current: entry.lastResult, versions: entry.results })
       },
     }))
     const commands = ctx.get?.('commands')
     if (commands) registered.push(commands.register({
-      name: 'duanju-slice-store-asr-key', description: '仅供切片工作台设置弹窗使用；请勿在对话中输入密钥。', recordInput: false,
+      name: 'duanju-slice-store-asr-key', description: '仅供自动剪辑工作台设置弹窗使用；请勿在对话中输入密钥。', recordInput: false,
       async handler({ rawInput, signal }) {
         try {
           signal?.throwIfAborted()
@@ -256,7 +256,7 @@ export function apply(ctx, config = {}) {
         }
       },
     }), commands.register({
-      name: 'duanju-slice', description: '切片工作台：本机运行环境、会话设置和对话制作入口', recordInput: true,
+      name: 'duanju-slice', description: '自动剪辑工作台：本机运行环境、会话设置和对话制作入口', recordInput: true,
       input: { hint: 'JSON: action=runtime-status/runtime-prompt/asr-status/list/create/open/save/lock/rename/remove/browse/generate/select-result/open-jianying', attachments: false },
       async handler(invocation) {
         try {
@@ -278,7 +278,7 @@ export function apply(ctx, config = {}) {
             } else {
               const request = { id: await createRuntimeRequest(baseOptions, invocation.signal), ready: false }
               setupRequests.set(session, request)
-              const prompt = `请加载 ${RUNTIME_SKILL} Skill，按它的步骤配置切片工作台运行环境。\n配置请求 ID：${request.id}\n如果我在这条对话中请你继续配置或重试，请按同一 Skill 用这个请求 ID 继续，不要让我另开对话。配置成功后，请我在切片工作台点击「新建会话」开始剪辑。`
+              const prompt = `请加载 ${RUNTIME_SKILL} Skill，按它的步骤配置自动剪辑工作台运行环境。\n配置请求 ID：${request.id}\n如果我在这条对话中请你继续配置或重试，请按同一 Skill 用这个请求 ID 继续，不要让我另开对话。配置成功后，请我在自动剪辑工作台点击「新建会话」开始剪辑。`
               try { await sendWorkbenchPrompt(ctx, exec, prompt, request.id) }
               catch (error) {
                 if (setupRequests.get(session) === request) setupRequests.delete(session)
