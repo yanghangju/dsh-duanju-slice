@@ -18,7 +18,7 @@
   "files": [
     "index.js",
     "client.js",
-    "lib/{studio,report,drama-source,script,docx,zip,asr,asr-credentials,locate,websocket}.js",
+    "lib/{studio,report,drama-source,script,docx,zip,asr,asr-credentials,locate,websocket,release-update}.js",
     "lib/{contiguous,plan,pick,model,frames,slice-draft,draft-root,render,ending,audio,revision}.js",
     "lib/promo/",
     "skills/duanju-slice-runtime/",
@@ -28,7 +28,7 @@
     "assets/ending/",
     "licenses/",
     "cordis.patch.yml",
-    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download,contiguous,asr-credentials}.*",
+    "tests/{promo-advanced,promo-asr,promo-subtitles,studio,tools,tool-config,drama-source,support,support-asr,client-render,runtime-download,contiguous,asr-credentials,release-update}.*",
     "README.md"
   ],
   "dsh": {
@@ -48,7 +48,7 @@
     }
   },
   "scripts": {
-    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs tests/runtime-download.test.mjs tests/contiguous.test.mjs tests/asr-credentials.test.mjs",
+    "test": "node --experimental-vm-modules --test tests/drama-source.test.mjs tests/studio.test.mjs tests/tools.test.mjs tests/tool-config.test.mjs tests/promo-asr.test.mjs tests/promo-subtitles.test.mjs tests/promo-advanced.test.mjs tests/runtime-download.test.mjs tests/contiguous.test.mjs tests/asr-credentials.test.mjs tests/release-update.test.mjs",
     "survey": "node scripts/survey.mjs"
   },
   "exports": {

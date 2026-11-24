@@ -12,8 +12,9 @@ import { advanced, ADVANCED_DESCRIPTION, ADVANCED_PARAMETERS, prepareAdvanced } 
 import { findFfprobe } from './lib/promo/media.js'
 import { configuredRuntime, runtimeOptions } from './lib/promo/runtime-setup.js'
 import { consumeRuntimeReceipt, createRuntimeRequest, discardRuntimeRequest } from './lib/promo/runtime-request.js'
+import { createReleaseUpdate } from './lib/release-update.js'
 
-const PLUGIN_VERSION = '0.3.5'
+const PLUGIN_VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 export const version = PLUGIN_VERSION
 export const inject = ['tools', 'agents', 'sessions', 'skills']
 
@@ -74,6 +75,13 @@ export function apply(ctx, config = {}) {
   const asrConfigured = () => asrApiKeyStatus(credentials(), baseOptions)
   const setupRequests = new WeakMap()
   const running = new Set()
+  ctx.inject(['connection', 'pluginManager'], (scope) => {
+    const route = createReleaseUpdate({
+      currentVersion: PLUGIN_VERSION, manager: scope.pluginManager, live: () => !!scope.get('hmr'),
+      editing: () => running.size > 0, log: scope.logger,
+    })
+    scope.effect(() => scope.connection.fetch.register(route))
+  })
   async function inSession(exec, fn) {
     const id = exec?.agent?.id
     assert(id && !running.has(id), id ? '本会话正在处理剪辑，请等待当前操作返回' : '请在同一剪辑会话中启动和继续任务')

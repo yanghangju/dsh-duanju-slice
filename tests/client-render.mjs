@@ -87,10 +87,10 @@ test('setup offers retry in the native chat, without a manual status check', () 
   } finally { locale = 'zh' }
 })
 
-test('after runtime setup the editor has speech settings, not a reconfiguration action', () => {
+test('after runtime setup the editor has workbench settings, not a reconfiguration action', () => {
   const html = render()
   const button = html.match(/<button\b[^>]*class="wb-secondary wb-settings"[^>]*>/)?.[0]
-  assert.match(button, /aria-label="语音识别设置"/)
+  assert.match(button, /aria-label="工作台设置"/)
   assert.match(button, /aria-haspopup="dialog"/)
   assert.doesNotMatch(button, /disabled=/)
   assert.doesNotMatch(html, /重新配置环境|wb-runtime-reconfigure/)

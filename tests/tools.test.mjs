@@ -22,20 +22,25 @@ async function loadModule(url, overrides) {
 async function loadPlugin(overrides = {}, config = { ffmpegPath: '' }, credentials) {
   const plugin = await loadModule(new URL('../index.js', import.meta.url), overrides)
   const tools = new Map()
-  const commands = [], skills = []
+  const commands = [], skills = [], routes = []
   const ctx = {
     effect: (callback) => callback(),
     on: () => () => {},
+    inject: (services, callback) => {
+      assert.deepEqual([...services], ['connection', 'pluginManager'])
+      callback({ ...ctx, pluginManager: {}, connection: { fetch: { register: (route) => { routes.push(route); return () => {} } } } })
+    },
     get: (key) => key === 'commands' ? { register: (spec) => { commands.push(spec); return () => {} } } : key === 'credentials' ? credentials : null,
     tools: { register: (spec) => { tools.set(spec.name, spec); return () => {} } },
     skills: { register: (spec) => { skills.push(spec); return () => {} } },
   }
   plugin.apply(ctx, config)
-  return { tools, commands, skills, version: plugin.version }
+  return { tools, commands, skills, routes, version: plugin.version }
 }
 
 test('注册面：同一剪辑工具区分混剪与切片，密钥走独立且不记录输入的命令', async () => {
-  const { tools, commands, skills, version } = await loadPlugin()
+  const { tools, commands, skills, routes, version } = await loadPlugin()
+  assert.deepEqual(routes.map(route => [route.path, route.methods]), [['/api/duanju-slice/release-update', ['GET', 'POST']]])
   assert.deepEqual([...tools.keys()].sort(), ['duanju_slice_advanced', 'duanju_slice_cut', 'duanju_slice_plan', 'duanju_slice_revise', 'duanju_slice_survey', 'duanju_slice_versions'])
   assert.equal(skills.length, 1)
   assert.equal(skills[0].name, 'duanju-slice-runtime')
