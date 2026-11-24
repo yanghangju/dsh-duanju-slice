@@ -55,12 +55,12 @@ window.__ModuleLoader__.load({
         'environment.check': '正在读取运行环境状态…', 'environment.title': '首次运行配置', 'environment.button': '配置运行环境', 'environment.prepare': '正在打开配置对话…',
         'environment.reconfigure': '重新配置环境', 'environment.reconfigureHelp': '另开一条配置对话，保留当前记录。',
         'environment.help': '先检查是否已配置语音识别 API Key，再在对话中检查剪辑依赖并补齐缺少的工具与默认曲库。',
-        'settings.title': '工作台设置', 'asr.setup': '配置语音识别', 'asr.label': '豆包语音 API Key', 'asr.private': '密钥存入本机凭据，不会发送到剪辑对话。',
+        'settings.title': '工作台设置', 'asr.edit': '修改语音识别key', 'asr.setup': '配置语音识别', 'asr.label': '豆包语音 API Key', 'asr.private': '密钥存入本机凭据，不会发送到剪辑对话。',
         'asr.required': '未找到语音识别 API Key。保存后将继续配置运行环境。',
         'asr.check': '正在检查密钥…', 'asr.configured': '已检测到密钥。填入新密钥可替换，服务会在识别时验证。', 'asr.missing': '未配置。填写 API Key 后即可使用语音识别。',
         'asr.checkError': '暂时无法检查密钥状态。', 'asr.saveError': '保存失败，请检查 API Key 格式或稍后重试。',
         'asr.save': '保存密钥', 'asr.continue': '保存并继续', 'asr.saving': '正在保存…', 'asr.saved': '语音识别 API Key 已保存。', 'asr.close': '关闭',
-        'update.label': '插件更新', 'update.check': '检查更新', 'update.checking': '正在检查…',
+        'update.check': '检查更新', 'update.checking': '正在检查…',
         'update.current': '无需更新（当前版本 {version}）。', 'update.available': '发现新版 {version}',
         'update.versions': '当前版本 {currentVersion} · 新版本 {version}', 'update.notes': '发布说明', 'update.noNotes': '这个版本没有发布说明。',
         'update.help': '请先完成正在进行的剪辑。更新只替换插件，不删除工作台数据。', 'update.install': '立即更新',
@@ -104,12 +104,12 @@ window.__ModuleLoader__.load({
         'environment.check': 'Checking runtime status…', 'environment.title': 'First-time setup', 'environment.button': 'Set up runtime', 'environment.prepare': 'Opening the setup conversation…',
         'environment.reconfigure': 'Reconfigure runtime', 'environment.reconfigureHelp': 'Open a new setup conversation and keep this one.',
         'environment.help': 'First, check for a speech recognition API key. The assistant then checks the editing dependencies and installs any missing tools and the default music library.',
-        'settings.title': 'Workbench settings', 'asr.setup': 'Set up speech recognition', 'asr.label': 'Doubao Speech API key', 'asr.private': 'The key is saved to the local credential store, not the editing chat.',
+        'settings.title': 'Workbench settings', 'asr.edit': 'Change speech recognition key', 'asr.setup': 'Set up speech recognition', 'asr.label': 'Doubao Speech API key', 'asr.private': 'The key is saved to the local credential store, not the editing chat.',
         'asr.required': 'No speech recognition API key was found. Save one to continue runtime setup.',
         'asr.check': 'Checking for an API key…', 'asr.configured': 'A key was found. You can replace it here. The service checks it when you use speech recognition.', 'asr.missing': 'Not configured. Add an API key to use speech recognition.',
         'asr.checkError': 'Could not check the key status.', 'asr.saveError': 'Could not save the API key. Check its format or try again.',
         'asr.save': 'Save key', 'asr.continue': 'Save and continue', 'asr.saving': 'Saving…', 'asr.saved': 'Speech recognition API key saved.', 'asr.close': 'Close',
-        'update.label': 'Plugin updates', 'update.check': 'Check for updates', 'update.checking': 'Checking…',
+        'update.check': 'Check for updates', 'update.checking': 'Checking…',
         'update.current': 'No update needed (current version {version}).', 'update.available': 'Version {version} is available',
         'update.versions': 'Current version {currentVersion} · New version {version}', 'update.notes': 'Release notes', 'update.noNotes': 'No release notes were provided.',
         'update.help': 'Finish any active edits first. This replaces only the plugin and keeps your workbench data.', 'update.install': 'Update now',
@@ -167,6 +167,8 @@ window.__ModuleLoader__.load({
         info: 'M12 8h.01M12 11v6M22 12a10 10 0 11-20 0 10 10 0 0120 0',
         alert: 'M12 8v5M12 16h.01M10.2 4.2L2.5 17.5A1.7 1.7 0 004 20h16a1.7 1.7 0 001.5-2.5L13.8 4.2a2.1 2.1 0 00-3.6 0',
         spinner: 'M21 12a9 9 0 11-9-9', dot: 'M12 11h.01', refresh: 'M20 10a8 8 0 10-1 7M20 4v6h-6',
+        key: 'M15.5 3a5.5 5.5 0 0 0-5.2 7.2L3 17.5V21h3.5l2-2v-2h2l2.8-2.8A5.5 5.5 0 1 0 15.5 3zM16.5 7.5h.01',
+        update: 'M22 12a10 10 0 1 0-20 0 10 10 0 0 0 20 0zM12 16V8m-4 4 4-4 4 4',
       };
       return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true, className }, h('path', { d: paths[name] || paths.info }));
     }
@@ -374,11 +376,7 @@ window.__ModuleLoader__.load({
 .wb-asr-modal .duanju-control{width:100%;min-width:0}
 .wb-asr-modal .wb-asr-help{font-size:11px;margin-top:8px}
 .wb-asr-modal .wb-alert{margin:10px 0 0}
-.wb-update-settings{margin-top:18px;padding-top:14px;border-top:1px solid var(--wb-line)}
-.wb-update-settings h3,.wb-release-modal h3{margin:0 0 8px;font-size:13px;font-weight:600}
-.wb-update-settings p{margin:8px 0 0}
-.wb-update-settings p:empty{margin:0}
-.wb-update-settings button[aria-disabled="true"]{opacity:.6;cursor:wait}
+.wb-release-modal h3{margin:0 0 8px;font-size:13px;font-weight:600}
 .wb-release-modal{width:min(480px,calc(100vw - 32px));margin:auto}
 .wb-release-notes{max-height:min(34vh,260px);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:10px 12px;border:1px solid var(--wb-line);border-radius:7px;background:var(--wb-soft);color:var(--wb-ink)}
 .duanju-studio-error{color:#c74743}
@@ -387,6 +385,11 @@ window.__ModuleLoader__.load({
 .wb-bar button{-webkit-app-region:no-drag}
 .wb-bar-left{display:flex;align-items:center;gap:18px;min-width:0;flex:1}
 .wb-bar-right{gap:10px;margin-left:auto}
+.wb-settings-menu{position:fixed;position-area:bottom span-left;position-try-fallbacks:flip-inline,flip-block,flip-inline flip-block;justify-self:end;align-self:start;inset:auto;margin:6px 0 0;padding:4px;width:max-content;min-width:164px;max-width:calc(100vw - 16px);border:1px solid var(--dsw-alias-border-l1,var(--wb-line));border-radius:9px;background:var(--dsw-alias-bg-overlay,var(--wb-bg));color:var(--wb-ink);box-shadow:0 8px 24px #0003;-webkit-app-region:no-drag}
+.wb-settings-menu button{display:flex;align-items:center;gap:9px;width:100%;min-height:32px;padding:5px 9px;border:0;border-radius:5px;background:transparent;text-align:start;font-size:12px;outline-offset:-2px}
+.wb-settings-menu button+button{margin-top:2px}
+.wb-settings-menu button:hover,.wb-settings-menu button:focus-visible,.wb-settings:has(+.wb-settings-menu:popover-open){background:var(--dsw-alias-bg-layer-2,var(--wb-hover))}
+.wb-settings-menu svg{color:var(--wb-ink2)}
 .wb-current-session{min-width:0;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:16px;border-left:1px solid var(--wb-line);font-size:12px;color:var(--wb-ink2)}
 .wb-list-toggle[aria-expanded="true"]{color:var(--wb-ink);background:var(--wb-soft)}
 .wb-nav-new{border-color:color-mix(in srgb,var(--wb-accent) 18%,var(--wb-bg));background:color-mix(in srgb,var(--wb-accent) 6%,var(--wb-bg));color:var(--wb-accent)!important}
@@ -599,25 +602,36 @@ window.__ModuleLoader__.load({
           return result;
         }
 
-        function ReleaseDialog({ release, onClose }) {
+        function UpdateDialog({ onClose }) {
           const translate = useLocale();
           const dialog = React.useRef(null);
           const close = React.useRef(null);
+          const heading = React.useRef(null);
           const title = React.useId();
           const notes = React.useId();
-          const [state, setState] = React.useState('ready');
+          const [update, setUpdate] = React.useState(null);
+          const [pending, setPending] = React.useState(false);
           const [result, setResult] = React.useState(null);
-          const pending = state === 'installing';
+          const release = update?.status === 'available' ? update : null;
           React.useEffect(() => {
             const element = dialog.current;
+            const abort = new AbortController();
+            const finish = (value) => { if (!abort.signal.aborted) setUpdate(value); };
+            const trigger = element.ownerDocument.activeElement;
             element.showModal();
             close.current?.focus();
-            return () => { if (element.open) element.close(); };
+            releaseRequest({ signal: abort.signal }).then(finish, () => finish({ status: 'error', code: 'connection' }));
+            return () => {
+              abort.abort();
+              if (element.open) element.close();
+              if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+            };
           }, []);
           React.useEffect(() => { if (result) close.current?.focus(); }, [result]);
           async function install() {
-            if (state !== 'ready' || !release.token) return;
-            setState('installing');
+            if (pending || result || !release?.token) return;
+            heading.current?.focus();
+            setPending(true);
             // Capture localized text now: live replacement can unmount this whole client plugin before the response arrives.
             const messages = Object.fromEntries(['applied', 'restart-required', 'error.install', 'error.download', 'error.remove', 'error.restored', 'error.restoreFailed', 'error.changed', 'error.busy', 'error.editing', 'error.managed'].map(key => [key, translate('update.' + key, release)]));
             let installed;
@@ -628,54 +642,26 @@ window.__ModuleLoader__.load({
             const message = messages[error ? 'error.' + installed?.code : installed.status] || messages['error.install'];
             if (!dialog.current?.isConnected) { window.alert(message); return; }
             setResult({ error, message });
-            setState('done');
+            setPending(false);
           }
+          const failed = result?.error || update?.status === 'error' || (release && !release.token);
+          const message = result?.message || (release ? translate(!release.token ? 'update.error.asset' : pending ? 'update.installing' : 'update.help')
+            : update?.status === 'current' ? translate('update.current', { version: update.currentVersion })
+            : update?.status === 'error' ? translate('update.error.' + (['busy', 'check', 'unavailable'].includes(update.code) ? update.code : 'connection'))
+            : translate('update.checking'));
+          const confirm = release && !result;
           return h('dialog', { ref: dialog, className: 'duanju-studio-dialog wb-release-modal', 'aria-labelledby': title,
-            onCancel: (event) => { event.stopPropagation(); event.preventDefault(); if (!pending) onClose(); } },
-            h('h2', { id: title }, translate('update.available', release)),
-            h('p', null, translate('update.versions', release)),
-            h('h3', { id: notes }, translate('update.notes')),
-            h('div', { className: 'wb-release-notes', role: 'region', 'aria-labelledby': notes, tabIndex: 0 }, release.notes.trim() || translate('update.noNotes')),
-            h('p', { className: result?.error || !release.token ? 'wb-alert' : undefined, role: result?.error || !release.token ? 'alert' : 'status' },
-              result?.message || translate(!release.token ? 'update.error.asset' : pending ? 'update.installing' : 'update.help')),
-            h('div', { className: 'duanju-picker-footer' }, result
-              ? h('button', { ref: close, type: 'button', className: 'wb-primary', onClick: onClose }, translate('asr.close'))
-              : [h('button', { key: 'cancel', ref: close, type: 'button', className: 'duanju-button', disabled: pending, onClick: onClose }, translate('cancel')),
-                 h('button', { key: 'install', type: 'button', className: 'wb-primary', disabled: pending || !release.token, onClick: install }, translate('update.install'))]));
-        }
-
-        function UpdateSettings() {
-          const translate = useLocale();
-          const trigger = React.useRef(null);
-          const request = React.useRef(null);
-          const [checking, setChecking] = React.useState(false);
-          const [update, setUpdate] = React.useState(null);
-          React.useEffect(() => () => request.current?.abort(), []);
-          async function check() {
-            if (request.current) return;
-            const abort = new AbortController();
-            request.current = abort;
-            setChecking(true); setUpdate(null);
-            try {
-              const result = await releaseRequest({ signal: abort.signal });
-              if (!abort.signal.aborted) setUpdate(result);
-            } catch { if (!abort.signal.aborted) setUpdate({ status: 'error', code: 'connection' }); }
-            finally {
-              request.current = null;
-              if (!abort.signal.aborted) setChecking(false);
-            }
-          }
-          function dismiss() {
-            setUpdate(null);
-            // Focus the trigger after the native modal closes and releases the settings dialog.
-            requestAnimationFrame(() => trigger.current?.focus());
-          }
-          return h('section', { className: 'wb-update-settings' },
-            h('h3', null, translate('update.label')),
-            h('button', { ref: trigger, type: 'button', className: 'duanju-button', 'aria-disabled': checking, onClick: check }, translate('update.check')),
-            h('p', { role: 'status' }, checking ? translate('update.checking') : update?.status === 'current' ? translate('update.current', { version: update.currentVersion }) : null),
-            update?.status === 'error' && h('p', { className: 'wb-alert', role: 'alert' }, translate('update.error.' + (['busy', 'check', 'unavailable'].includes(update.code) ? update.code : 'connection'))),
-            update?.status === 'available' && h(ReleaseDialog, { release: update, onClose: dismiss }));
+            onCancel: (event) => { event.preventDefault(); if (!pending) onClose(); } },
+            h('h2', { ref: heading, id: title, tabIndex: -1 }, release ? translate('update.available', release) : translate('update.check')),
+            h('div', { role: 'status' },
+              release && h('p', null, translate('update.versions', release)),
+              h('p', { className: failed ? 'wb-alert' : undefined }, message)),
+            release && h(React.Fragment, null,
+              h('h3', { id: notes }, translate('update.notes')),
+              h('div', { className: 'wb-release-notes', role: 'region', 'aria-labelledby': notes, tabIndex: 0 }, release.notes.trim() || translate('update.noNotes'))),
+            h('div', { className: 'duanju-picker-footer' },
+              h('button', { ref: close, type: 'button', className: 'duanju-button', disabled: pending, onClick: onClose }, translate(!update || confirm ? 'cancel' : 'asr.close')),
+              confirm && h('button', { type: 'button', className: 'wb-primary', disabled: pending || !release.token, onClick: install }, translate('update.install'))));
         }
 
         function AsrSettings({ setup, setupButton, check, save, onContinue, onClose }) {
@@ -721,7 +707,7 @@ window.__ModuleLoader__.load({
             finally { setPending(false); }
           }
           return h('dialog', { ref: dialog, className: 'duanju-studio-dialog wb-asr-modal', 'aria-labelledby': title, 'aria-describedby': description, onCancel: (event) => { event.preventDefault(); if (!pending) onClose(); } },
-            h('h2', { id: title }, translate(setup ? 'asr.setup' : 'settings.title')),
+            h('h2', { id: title }, translate(setup ? 'asr.setup' : 'asr.edit')),
             h('p', { role: 'status' }, translate(status)),
             h('form', { onSubmit: submit },
               h('label', { htmlFor: field }, translate('asr.label')),
@@ -730,8 +716,7 @@ window.__ModuleLoader__.load({
               failed && h('p', { className: 'wb-alert', role: 'alert' }, translate('asr.saveError')),
               h('div', { className: 'duanju-picker-footer' },
                 h('button', { type: 'button', className: 'duanju-button', disabled: pending, onClick: onClose }, translate(setup ? 'cancel' : 'asr.close')),
-                h('button', { type: 'submit', className: 'wb-primary', disabled: pending }, translate(pending ? 'asr.saving' : setup ? 'asr.continue' : 'asr.save')))),
-            !setup && h(UpdateSettings));
+                h('button', { type: 'submit', className: 'wb-primary', disabled: pending }, translate(pending ? 'asr.saving' : setup ? 'asr.continue' : 'asr.save')))));
         }
 
         function VideoPreview({ result, sessionId }) {
@@ -813,6 +798,9 @@ window.__ModuleLoader__.load({
           const scriptInput = React.useRef(null);
           const subtitleButton = React.useRef(null);
           const chatButton = React.useRef(null);
+          const settingsButton = React.useRef(null);
+          const settingsMenu = React.useRef(null);
+          const settingsMenuId = React.useId();
           const alive = React.useRef(true);
           const subtitleHelpId = React.useId();
           const modeHelpId = React.useId();
@@ -820,7 +808,12 @@ window.__ModuleLoader__.load({
           const directionHelpId = React.useId();
           const chatId = React.useId();
           React.useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-          const { settings, failure, status, sending, busy, change, commit, lockConfiguration, generate, selectVersion, openJianying, openingJianying, browse, reportNotice, item = {}, sessionId, sessionTitle, onNew, openAsrSettings, refresh } = model;
+          const { settings, failure, status, sending, busy, change, commit, lockConfiguration, generate, selectVersion, openJianying, openingJianying, browse, reportNotice, item = {}, sessionId, sessionTitle, onNew, openSettingsDialog, refresh } = model;
+          function chooseSettings(kind) {
+            settingsMenu.current.hidePopover();
+            settingsButton.current.focus({ preventScroll: true });
+            openSettingsDialog(kind);
+          }
           const mode = settings.mode === 'slice' ? 'slice' : 'mix';
           const slice = mode === 'slice';
           const visibleFields = slice ? requiredFields : fields;
@@ -886,7 +879,10 @@ window.__ModuleLoader__.load({
             h('header', { className: 'wb-bar', 'data-window-drag': true },
               h('div', { className: 'wb-bar-left' }, model.navigation, h('div', { className: 'wb-brand' }, h(FilmIcon, { size: 21 }), h('h1', { className: 'wb-title' }, translate('title'))), h('span', { className: 'wb-current-session', title: sessionTitle }, sessionTitle)),
               h('div', { className: 'wb-bar-right' },
-                h('button', { type: 'button', className: 'wb-secondary wb-settings', 'aria-label': translate('settings.title'), 'aria-haspopup': 'dialog', title: translate('settings.title'), onClick: openAsrSettings }, h(Icon, { name: 'settings', size: 16 })),
+                h('button', { ref: settingsButton, type: 'button', className: 'wb-secondary wb-settings', 'aria-label': translate('settings.title'), title: translate('settings.title'), popovertarget: settingsMenuId }, h(Icon, { name: 'settings', size: 16 })),
+                h('div', { ref: settingsMenu, id: settingsMenuId, popover: 'auto', className: 'wb-settings-menu', role: 'group', 'aria-label': translate('settings.title') },
+                  h('button', { type: 'button', 'aria-haspopup': 'dialog', onClick: () => chooseSettings('asr') }, h(Icon, { name: 'key', size: 15 }), translate('asr.edit')),
+                  h('button', { type: 'button', 'aria-haspopup': 'dialog', onClick: () => chooseSettings('update') }, h(Icon, { name: 'update', size: 15 }), translate('update.check'))),
                 h('button', { type: 'button', className: 'wb-secondary wb-nav-new', disabled: busy || sending, 'aria-label': translate('sessions.new'), title: translate('sessions.new'), onClick: onNew }, h(Icon, { name: 'plus', size: 15 }), h('span', null, translate('sessions.new'))),
                 h('button', { type: 'button', className: 'wb-secondary wb-editor-open', disabled: !!openingJianying, 'aria-label': translate('editor.open'), title: translate('editor.open'), onClick: openJianying }, h(Icon, { name: openingJianying ? 'spinner' : 'arrow', size: 15, className: openingJianying ? 'wb-spinner' : undefined }), h('span', null, translate(openingJianying ? 'editor.opening' : 'editor.open'))),
                 h('span', { className: 'wb-state', 'data-state': status, role: 'status', 'aria-live': 'polite' }, h(Icon, { name: status === 'saving' ? 'spinner' : status === 'saved' ? 'check' : 'dot', size: 13 }), translate('status.' + status)),
@@ -1027,7 +1023,7 @@ window.__ModuleLoader__.load({
           const [notice, setNotice] = React.useState(null);
           const [saving, setSaving] = React.useState(false);
           const [sending, setSending] = React.useState(false);
-          const [asrDialog, setAsrDialog] = React.useState(null);
+          const [settingsDialog, setSettingsDialog] = React.useState(null);
           const setupButton = React.useRef(null);
           const [openingJianying, setOpeningJianying] = React.useState(false);
           const [busy, setBusy] = React.useState(false);
@@ -1076,7 +1072,7 @@ window.__ModuleLoader__.load({
             const runtime = { abort: new AbortController(), owned: new Set(), reference: null, saveTask: null, saved: '' };
             runtimeRef.current = runtime;
             setReference(null); setItems([]); setActiveId(null); activeRef.current = null;
-            setEnvironment('checking'); setStatus('loading'); setFailure(null); setNotice(null); setAsrDialog(null); setSaving(false); setSending(false); setOpeningJianying(false); setBusy(false);
+            setEnvironment('checking'); setStatus('loading'); setFailure(null); setNotice(null); setSettingsDialog(null); setSaving(false); setSending(false); setOpeningJianying(false); setBusy(false);
             (async () => {
               const setup = cachedSession(SETUP_KEY);
               for (const id of new Set([setup, cachedSession(CACHE_KEY)].filter(Boolean))) {
@@ -1132,7 +1128,7 @@ window.__ModuleLoader__.load({
                 runtime.setupId = sessionId;
               }
               const result = await command(runtime, { action: 'runtime-prompt' });
-              if (result.needsAsrKey === true) { setAsrDialog('setup'); return; }
+              if (result.needsAsrKey === true) { setSettingsDialog('setup'); return; }
               if (!result.accepted) throw new Error(translate('error.response'));
               rememberSession(SETUP_KEY, runtime.setupId);
               setEnvironment('setup');
@@ -1343,8 +1339,9 @@ window.__ModuleLoader__.load({
           const activeItem = items.find((item) => item.id === activeId);
           const sessionTitle = activeItem?.title || translate('title');
           const closeList = () => setListOpen(false);
-          const closeAsrDialog = () => setAsrDialog(null);
-          const asrModal = asrDialog && h(AsrSettings, { setup: asrDialog === 'setup', setupButton, check: checkAsrKey, save: saveAsrKey, onClose: closeAsrDialog, onContinue: () => { closeAsrDialog(); void requestSetup(); } });
+          const closeSettingsDialog = () => setSettingsDialog(null);
+          const settingsModal = settingsDialog === 'update' ? h(UpdateDialog, { onClose: closeSettingsDialog })
+            : settingsDialog && h(AsrSettings, { setup: settingsDialog === 'setup', setupButton, check: checkAsrKey, save: saveAsrKey, onClose: closeSettingsDialog, onContinue: () => { closeSettingsDialog(); void requestSetup(); } });
           if (environment !== 'editor') {
             const message = failure && translate(failure.key, { detail: failure.detail });
             return h('div', { className: 'wb-root' }, h('style', null, css),
@@ -1358,20 +1355,20 @@ window.__ModuleLoader__.load({
                 h('div', { className: failure ? 'wb-loading wb-environment-check wb-loading-error' : 'wb-loading wb-environment-check', role: failure ? 'alert' : 'status' },
                   h('span', null, message || translate('environment.check')),
                   failure && h('button', { type: 'button', className: 'wb-ghost', onClick: () => setRetry(value => value + 1) }, translate('retry'))),
-              asrModal);
+              settingsModal);
           }
           return h('div', { className: 'wb-root' }, h('style', null, css),
             listOpen && h(React.Fragment, null,
               h('button', { type: 'button', className: 'wb-sessions-scrim', 'aria-label': translate('task.close'), tabIndex: -1, onClick: closeList }),
               h(SessionList, { id: listId, items, activeId, busy: busy || sending || status === 'loading', loading: status === 'loading', onClose: closeList, onSelect: switchTo, onRename: renameSession, onRemove: removeSession })),
             h('div', { className: 'wb-main' },
-              ready ? h(SessionProvider, { key: activeId, session: reference }, renderSlot(CONVERSATION, { model: { settings, failure, saving, status, sending, busy, openingJianying, reportNotice: setNotice, change, commit, lockConfiguration, generate, selectVersion, openJianying, browse, sessionId: activeId, sessionTitle, item: activeItem, navigation: h('button', { ref: listTrigger, type: 'button', className: 'wb-secondary wb-list-toggle', 'aria-label': translate('sessions.list'), 'aria-expanded': listOpen, 'aria-controls': listId, onClick: () => setListOpen(value => !value) }, h(Icon, { name: listOpen ? 'panel' : 'panelOpen', size: 15 }), h('span', null, translate('sessions.list'))), onNew: createSession, openAsrSettings: () => setAsrDialog('settings'), refresh } })) :
+              ready ? h(SessionProvider, { key: activeId, session: reference }, renderSlot(CONVERSATION, { model: { settings, failure, saving, status, sending, busy, openingJianying, reportNotice: setNotice, change, commit, lockConfiguration, generate, selectVersion, openJianying, browse, sessionId: activeId, sessionTitle, item: activeItem, navigation: h('button', { ref: listTrigger, type: 'button', className: 'wb-secondary wb-list-toggle', 'aria-label': translate('sessions.list'), 'aria-expanded': listOpen, 'aria-controls': listId, onClick: () => setListOpen(value => !value) }, h(Icon, { name: listOpen ? 'panel' : 'panelOpen', size: 15 }), h('span', null, translate('sessions.list'))), onNew: createSession, openSettingsDialog: setSettingsDialog, refresh } })) :
                 h('div', { className: failure ? 'wb-loading wb-loading-error' : 'wb-loading', role: failure ? 'alert' : 'status' },
                   h('span', null, failure ? translate(failure.key, { detail: failure.detail }) : translate('loading')),
                   failure && h('button', { className: 'wb-ghost', type: 'button', onClick: () => setRetry((value) => value + 1) }, translate('retry')))),
 
             notice && h(Notice, { message: notice, onClose: () => setNotice(null), disabled: busy || saving, onConfirm: notice.sessionId ? confirmRemove : undefined, heading: notice.heading, accept: notice.accept }),
-            asrModal);
+            settingsModal);
         }
 
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: NS, order: 5, label: () => t('title') }, FilmIcon));

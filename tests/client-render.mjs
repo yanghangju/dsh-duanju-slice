@@ -87,13 +87,19 @@ test('setup offers retry in the native chat, without a manual status check', () 
   } finally { locale = 'zh' }
 })
 
-test('after runtime setup the editor has workbench settings, not a reconfiguration action', () => {
+test('the gear targets a native popover with exactly two dialog actions and no mounted dialog', () => {
   const html = render()
-  const button = html.match(/<button\b[^>]*class="wb-secondary wb-settings"[^>]*>/)?.[0]
-  assert.match(button, /aria-label="工作台设置"/)
-  assert.match(button, /aria-haspopup="dialog"/)
-  assert.doesNotMatch(button, /disabled=/)
-  assert.doesNotMatch(html, /重新配置环境|wb-runtime-reconfigure/)
+  const gear = html.match(/<button\b[^>]*class="wb-secondary wb-settings"[^>]*>/)?.[0]
+  assert.match(gear, /aria-label="工作台设置"/)
+  assert.doesNotMatch(gear, /disabled=|aria-haspopup="dialog"/)
+  const target = gear.match(/popovertarget="([^"]+)"/i)?.[1]
+  assert.ok(target)
+  const menu = html.match(/<div\b[^>]*class="wb-settings-menu"[^>]*>[\s\S]*?<\/div>/)?.[0]
+  assert.ok(menu.includes(`id="${target}"`))
+  assert.match(menu, /popover="auto"/)
+  assert.equal([...menu.matchAll(/<button\b/g)].length, 2)
+  assert.deepEqual([...menu.matchAll(/<button[^>]*aria-haspopup="dialog"[^>]*>[\s\S]*?<\/svg>([^<]+)<\/button>/g)].map(match => match[1]), ['修改语音识别key', '检查更新'])
+  assert.doesNotMatch(html, /<dialog\b|重新配置环境|wb-runtime-reconfigure/)
 })
 
 test('the mode selector defaults to montage; single-episode clips hide the subtitle input', () => {
