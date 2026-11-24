@@ -182,7 +182,7 @@ export function apply(ctx, config = {}) {
       },
     }))
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_cut', description: '按会话模式开始剪辑。切片（slice）从同一集直接裁一段原声连续片段，交付 MP4 和可用的剪映草稿。混剪（mix）优先用分集字幕定位，字幕不可用或未匹配完整台词时自动使用现有语音识别，不停下来询问用户，对白抽帧核验动作且已通过段不重查；快切以附近台词为锚，在紧邻的无对白空档内每秒抽3帧，用同一组样本确认目标动作并排除字幕、闪镜、跳帧、卡帧和封面；混剪保存并按 plan.json 剪辑，成片不做逐帧视觉验收。不生成 Word。',
+      name: 'duanju_slice_cut', description: '按会话模式开始剪辑。切片（slice）从同一集裁一段原声连续片段；若原集起点在 0–2 秒，渲染前以每秒 3 帧检查切片前 2 秒并剔除封面。交付 MP4 和可用的剪映草稿。混剪（mix）优先用分集字幕定位，字幕不可用或未匹配完整台词时自动使用现有语音识别，不停下来询问用户，对白抽帧核验动作且已通过段不重查；快切以附近台词为锚，在紧邻的无对白空档内每秒抽3帧，用同一组样本确认目标动作并排除字幕、闪镜、跳帧、卡帧和封面；混剪保存并按 plan.json 剪辑，成片不做逐帧视觉验收。不生成 Word。',
       parameters: CUT_PARAMETERS, output: output('连续切片成片或混剪任务及执行步骤'),
       execute: (args, exec) => inSession(exec, id => start(id, args, exec)),
     }))
@@ -197,7 +197,7 @@ export function apply(ctx, config = {}) {
       execute: (args, exec) => args.action === 'guide' ? advanced(ctx, exec, args, baseOptions) : inSession(exec, id => advance(id, args, exec)),
     }))
     registered.push(ctx.tools.register({
-      name: 'duanju_slice_revise', description: '修订当前选中的版本，保留旧版。切片在同一集按相对该版起点的秒数重新裁切；混剪按剧情、节奏或取景重做 plan.json，不截断完整台词、不改原声或固定片尾音量，BGM 固定 −12 dB。',
+      name: 'duanju_slice_revise', description: '修订当前选中的版本，保留旧版。切片在同一集按相对该版起点的秒数重新裁切，新起点落在原集 0–2 秒时同样抽帧剔除封面；混剪按剧情、节奏或取景重做 plan.json，不截断完整台词、不改原声或固定片尾音量，BGM 固定 −12 dB。',
       parameters: { type: 'object', properties: {
         note: { type: 'string', description: '这次修订的目标' },
         start: { type: 'number', description: '切片：相对该版起点的开始秒数，可为负；混剪：开头期望时间，只作为目标' },
