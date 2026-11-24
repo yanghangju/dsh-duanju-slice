@@ -1,37 +1,38 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { createReleaseUpdate } from '../lib/release-update.js'
+import { writeZip } from '../lib/zip.js'
 
 const name = 'dsh-duanju-slice'
 const currentVersion = '0.3.9'
 const next = '0.3.10'
-const base = `https://github.com/yanghangju/${name}/releases/download`
 const latest = `https://api.github.com/repos/yanghangju/${name}/releases/latest`
+const zipURL = `https://codeload.github.com/yanghangju/${name}/zip/refs/tags/v${next}`
 const filename = `${name}-${next}.tgz`
-const assetURL = `${base}/v${next}/${filename}`
 const notes = '## 更新内容\n- 修复问题\n<img src=x onerror=alert(1)>'
 const previous = { name, installed: true, removable: true, version: currentVersion, source: `link:${join(tmpdir(), name)}`, enabled: true }
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
-const release = (version, assets = []) => ({ draft: false, prerelease: false, tag_name: `v${version}`, body: notes, assets })
-const asset = (bytes) => ({ name: filename, browser_download_url: assetURL, state: 'uploaded', digest: `sha256:${digest(bytes)}`, size: bytes.length })
+const release = (version) => ({ draft: false, prerelease: false, tag_name: `v${version}`, body: notes, assets: [] })
 const status = async (response) => (await response).json()
 const get = (route) => route.fetch(new Request(`http://localhost${route.path}`))
 const post = (route, token) => route.fetch(new Request(`http://localhost${route.path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) }))
 
-async function fixture(t, { manifestVersion = next, live = true, editing, invalidBytes = false, installFailure, removalFailure } = {}) {
+async function fixture(t, { packageName = name, live = true, editing, invalidBytes = false, unsafePath = false, installFailure, removalFailure } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'duanju-release-test-'))
   t.after(() => rm(root, { recursive: true, force: true }))
-  const folder = join(root, 'package')
-  await mkdir(folder)
-  await writeFile(join(folder, 'package.json'), JSON.stringify({ name, version: manifestVersion, dsh: { bundle: { patch: './cordis.patch.yml' } } }))
-  const fixtureArchive = join(root, 'fixture.tgz')
-  execFileSync('tar', ['-czf', fixtureArchive, '-C', root, 'package'])
-  const bytes = await readFile(fixtureArchive)
+  const prefix = `${name}-${next}/`
+  const manifest = { name: packageName, version: currentVersion, dsh: { bundle: { patch: './cordis.patch.yml' } } }
+  const bytes = writeZip([
+    { name: prefix, data: '' },
+    { name: prefix + 'package.json', data: JSON.stringify(manifest) },
+    ...['index.js', 'client.js', 'cordis.patch.yml', 'assets/ending/片尾.mp3'].map(file => ({ name: prefix + file, data: 'fixture' })),
+    ...(unsafePath ? [{ name: prefix + '../escape.js', data: '' }] : []),
+  ])
   const events = []
   let installed = previous
   const manager = {
@@ -61,8 +62,10 @@ async function fixture(t, { manifestVersion = next, live = true, editing, invali
         return { application: 'applied' }
       }
       assert.equal(options.expected.version, next)
-      assert.deepEqual(await readFile(spec), bytes)
       assert.equal(spec, join(root, 'updates', digest(bytes), filename))
+      const extract = (file) => execFileSync('tar', ['-xOzf', spec, `package/${file}`], { encoding: 'utf8' })
+      assert.deepEqual(JSON.parse(extract('package.json')), { ...manifest, version: next })
+      assert.equal(extract('client.js'), 'fixture')
       assert.equal(installed?.version, live ? undefined : currentVersion)
       events.push('install')
       if (installFailure === 'install') return { application: 'failed', stage: 'install' }
@@ -73,8 +76,8 @@ async function fixture(t, { manifestVersion = next, live = true, editing, invali
   }
   const route = createReleaseUpdate({ manager, live: () => live, editing, currentVersion, log: { warn() {} }, cacheDir: join(root, 'updates'),
     async fetcher(url) {
-      if (url === latest) return Response.json(release(next, [asset(bytes)]))
-      assert.equal(url, assetURL)
+      if (url === latest) return Response.json(release(next))
+      assert.equal(url, zipURL)
       events.push('download')
       return new Response(invalidBytes ? Buffer.alloc(bytes.length) : bytes)
     },
@@ -82,22 +85,22 @@ async function fixture(t, { manifestVersion = next, live = true, editing, invali
   return { route, events, installed: () => installed }
 }
 
-test('检查按数值版本比较；无可校验安装包仍可阅读新版说明', async () => {
-  let version = '0.3.8'
-  const route = createReleaseUpdate({ currentVersion, fetcher: async (url) => {
+test('按数值版本比较；没有上传安装包也能用 GitHub 源码 ZIP 更新', async () => {
+  const { token, ...details } = await status(get(createReleaseUpdate({ currentVersion, fetcher: async (url) => {
     assert.equal(url, latest)
-    return Response.json(release(version, [{ ...asset(Buffer.from('x')), browser_download_url: 'https://example.invalid/pkg.tgz' }]))
-  } })
-  const response = await get(route)
-  assert.equal(response.headers.get('cache-control'), 'no-store')
-  assert.deepEqual(await response.json(), { status: 'current', currentVersion })
-  version = currentVersion
-  assert.deepEqual(await status(get(route)), { status: 'current', currentVersion })
-  version = next
-  assert.deepEqual(await status(get(route)), { status: 'available', currentVersion, version: next, notes })
+    return Response.json(release(next))
+  } })))
+  assert.deepEqual(details, { status: 'available', currentVersion, version: next, notes })
+  assert.match(token, /^[a-f0-9-]{36}$/)
+  for (const version of ['0.3.8', currentVersion]) {
+    const route = createReleaseUpdate({ currentVersion, fetcher: async () => Response.json(release(version)) })
+    const response = await get(route)
+    assert.equal(response.headers.get('cache-control'), 'no-store')
+    assert.deepEqual(await status(response), { status: 'current', currentVersion })
+  }
 })
 
-test('检查不下载；只有有效的单次确认才校验、卸载、安装', async (t) => {
+test('确认前不下载；确认后用标签版本重打包，卸载并安装', async (t) => {
   const { route, events, installed } = await fixture(t)
   const offer = await status(get(route))
   assert.equal(offer.version, next)
@@ -112,8 +115,8 @@ test('检查不下载；只有有效的单次确认才校验、卸载、安装',
   assert.equal(installed().version, next)
 })
 
-test('校验和错误或包内版本不匹配时，不改动旧安装', async (t) => {
-  for (const invalid of [{ invalidBytes: true }, { manifestVersion: '0.3.11' }]) {
+test('ZIP 损坏、插件不对或包含非法路径时，不改动旧安装', async (t) => {
+  for (const invalid of [{ invalidBytes: true }, { packageName: 'another-plugin' }, { unsafePath: true }]) {
     const { route, events, installed } = await fixture(t, invalid)
     const offer = await status(get(route))
     assert.deepEqual(await status(post(route, offer.token)), { status: 'error', code: 'download' })
